@@ -1,0 +1,129 @@
+====================================================
+  MY STORY - INSTALLATION & SETUP GUIDE
+====================================================
+
+PROJECT STRUCTURE
+-----------------
+my-story/
+├── backend/          Python Flask API
+│   ├── app.py
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/         React Native (Expo) App
+│   ├── App.js
+│   ├── package.json
+│   ├── babel.config.js
+│   └── Dockerfile
+├── docker-compose.yml
+└── INSTALL.txt
+
+
+====================================================
+  OPTION A: RUN WITH DOCKER (recommended)
+====================================================
+
+Prerequisites:
+  - Docker Desktop installed and running
+    https://www.docker.com/products/docker-desktop
+
+Steps:
+  1. Open a terminal in the project root (my-story/)
+  2. Build and start all services:
+
+       docker-compose up --build
+
+  3. Access the app:
+       Backend API  ->  http://localhost:5000
+       Frontend     ->  http://localhost:8081
+
+  4. To stop:
+
+       docker-compose down
+
+
+====================================================
+  OPTION B: RUN LOCALLY (without Docker)
+====================================================
+
+--- BACKEND (Flask) ---
+
+Prerequisites:
+  - Python 3.10+ installed  (https://www.python.org/downloads/)
+
+Steps:
+  1. Open a terminal and navigate to the backend folder:
+
+       cd backend
+
+  2. Create and activate a virtual environment:
+
+       Windows:
+         python -m venv venv
+         venv\Scripts\activate
+
+       macOS / Linux:
+         python3 -m venv venv
+         source venv/bin/activate
+
+  3. Install dependencies:
+
+       pip install -r requirements.txt
+
+  4. Start the server:
+
+       python app.py
+
+  5. The API will be available at:  http://localhost:5000
+
+
+--- FRONTEND (React Native / Expo) ---
+
+Prerequisites:
+  - Node.js 18+  (https://nodejs.org/)
+  - Expo CLI     (installed automatically via npx)
+
+Steps:
+  1. Open a NEW terminal and navigate to the frontend folder:
+
+       cd frontend
+
+  2. Install dependencies:
+
+       npm install
+
+  3. Start the Expo development server:
+
+       npx expo start
+
+  4. Choose how to run the app:
+       - Press  w  to open in a web browser
+       - Press  a  to open on an Android emulator
+       - Press  i  to open on an iOS simulator (macOS only)
+       - Scan the QR code with the Expo Go app on your phone
+
+
+====================================================
+  API ENDPOINTS
+====================================================
+
+  GET  /              -> Welcome message
+  GET  /api/health    -> Health check
+  GET  /api/stories   -> List all stories
+
+
+====================================================
+  TROUBLESHOOTING
+====================================================
+
+- Port already in use:
+    Change the port in app.py (backend) or use
+    "npx expo start --port 8082" (frontend).
+
+- CORS errors:
+    The backend already has Flask-CORS enabled for
+    all origins in development mode.
+
+- Expo not found:
+    Run "npm install -g expo-cli" to install globally.
+
+====================================================
