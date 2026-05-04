@@ -1,5 +1,18 @@
 {
-  "plugins": [
-    "expo-asset"
-  ]
+  "expo": {
+    "name": "My Story",
+    "slug": "my-story",
+    "version": "1.0.0",
+    "web": {
+      "bundler": "metro",
+      "name": "My Story",
+      "shortName": "MyStory",
+      "description": "My Story App",
+      "themeColor": "#4f46e5",
+      "backgroundColor": "#f8fafc"
+    },
+    "plugins": [
+      "expo-asset"
+    ]
+  }
 }
