@@ -15,40 +15,67 @@ function formatDate(dateStr) {
   }).format(date);
 }
 
-export default function EventCard({ event, onPress, titleFontFamily }) {
+export default function EventCard({ event, onPress, onDeletePress, titleFontFamily }) {
   const preview = event.preview || event.content || "No content yet for this story.";
 
+  const openStory = () => onPress(event);
+  const requestRemove = () => onDeletePress?.(event);
+
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => onPress(event)}
-      activeOpacity={0.82}
-      accessibilityRole="button"
-    >
-      <View style={styles.header}>
-        <Text style={styles.date}>{formatDate(event.event_date)}</Text>
-        <Text
-          style={[styles.title, titleFontFamily ? { fontFamily: titleFontFamily } : null]}
-          numberOfLines={2}
+    <View style={styles.card}>
+      <View style={styles.headerRow}>
+        <TouchableOpacity
+          style={styles.headerTapArea}
+          onPress={openStory}
+          activeOpacity={0.82}
+          accessibilityRole="button"
         >
-          {event.title}
-        </Text>
+          <View style={styles.header}>
+            <Text style={styles.date}>{formatDate(event.event_date)}</Text>
+            <Text
+              style={[styles.title, titleFontFamily ? { fontFamily: titleFontFamily } : null]}
+              numberOfLines={2}
+            >
+              {event.title}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        {onDeletePress ? (
+          <TouchableOpacity
+            style={styles.removeButton}
+            onPress={requestRemove}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Remove story"
+          >
+            <Text style={styles.removeButtonText}>Remove</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
-      <Text style={styles.preview} numberOfLines={3}>
-        {preview}
-      </Text>
+      <TouchableOpacity
+        style={styles.bodyTapArea}
+        onPress={openStory}
+        activeOpacity={0.82}
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${event.title || "story"}`}
+      >
+        <Text style={styles.preview} numberOfLines={3}>
+          {preview}
+        </Text>
 
-      {event.tags?.length ? (
-        <View style={styles.tags}>
-          {event.tags.map((tag) => (
-            <View key={tag.id} style={[styles.tag, tag.color ? { borderColor: tag.color } : null]}>
-              <Text style={styles.tagText}>{tag.name}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-    </TouchableOpacity>
+        {event.tags?.length ? (
+          <View style={styles.tags}>
+            {event.tags.map((tag) => (
+              <View key={tag.id} style={[styles.tag, tag.color ? { borderColor: tag.color } : null]}>
+                <Text style={styles.tagText}>{tag.name}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -67,11 +94,38 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
+  headerRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  headerTapArea: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+  },
   header: {
     borderBottomColor: colors.diary.ruleLine,
     borderBottomWidth: 1,
-    marginBottom: 12,
     paddingBottom: 10,
+    marginBottom: 12,
+  },
+  bodyTapArea: {
+    alignSelf: "stretch",
+    flexShrink: 0,
+  },
+  removeButton: {
+    flexShrink: 0,
+    marginLeft: 8,
+    paddingBottom: 2,
+    paddingTop: 2,
+  },
+  removeButtonText: {
+    color: colors.diary.inkMid,
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "right",
+    writingDirection: "ltr",
   },
   date: {
     color: colors.diary.inkLight,

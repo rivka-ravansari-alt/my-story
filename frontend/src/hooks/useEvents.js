@@ -32,5 +32,13 @@ export function useEvents() {
     return updated;
   }, []);
 
-  return { events, loading, error, fetchAll, createEvent, updateEvent };
+  const deleteEventById = useCallback(
+    async (id) => {
+      await eventService.delete(Number(id));
+      await fetchAll();
+    },
+    [fetchAll]
+  );
+
+  return { events, loading, error, fetchAll, createEvent, updateEvent, deleteEventById };
 }

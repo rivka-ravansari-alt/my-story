@@ -1,6 +1,7 @@
 import React, { useCallback } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Platform,
   RefreshControl,
@@ -19,7 +20,7 @@ import { radius } from "../styles/spacing";
 
 export default function EventsPage() {
   const navigation = useNavigation();
-  const { events, loading, error, fetchAll } = useEvents();
+  const { events, loading, error, fetchAll, deleteEventById } = useEvents();
   const [fontsLoaded] = useFonts({ Caveat_400Regular, Caveat_700Bold });
 
   const handwritingFont = fontsLoaded ? "Caveat_400Regular" : undefined;
@@ -39,16 +40,50 @@ export default function EventsPage() {
     navigation.navigate("WritingPage");
   };
 
+  const openCalendarJournal = () => {
+    navigation.navigate("CalendarJournalPage");
+  };
+
+  const confirmRemoveStory = (event) => {
+    const rawTitle = event.title?.trim() || "this story";
+    const titlePreview = rawTitle.length > 72 ? `${rawTitle.slice(0, 69)}…` : rawTitle;
+    const body = `"${titlePreview}" will be permanently deleted from your journal. This cannot be undone.`;
+
+    const runDelete = async () => {
+      try {
+        await deleteEventById(Number(event.id));
+        // No success dialog—the list refreshes and the card disappears as feedback.
+      } catch (e) {
+        const message =
+          e?.message || "Something went wrong while deleting your story. Please try again.";
+        if (Platform.OS === "web") {
+          window.alert?.(`Could not delete\n\n${message}`);
+          return;
+        }
+        Alert.alert("Could not delete", message);
+      }
+    };
+
+    // react-native-web often does not run Android-style Alert button callbacks reliably.
+    if (Platform.OS === "web" && typeof window !== "undefined" && typeof window.confirm === "function") {
+      if (window.confirm(`Remove story?\n\n${body}`)) void runDelete();
+      return;
+    }
+
+    Alert.alert("Remove story?", body, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => void runDelete(),
+      },
+    ]);
+  };
+
   const renderHeader = () => (
     <View style={styles.header}>
-      <Text style={[styles.kicker, handwritingFont ? { fontFamily: handwritingFont } : null]}>
-        My Story Journal
-      </Text>
       <Text style={[styles.title, handwritingBold ? { fontFamily: handwritingBold } : null]}>
         My Stories
-      </Text>
-      <Text style={styles.subtitle}>
-        Every memory saved in your journal, ready to read or edit.
       </Text>
     </View>
   );
@@ -85,6 +120,9 @@ export default function EventsPage() {
         <TouchableOpacity style={styles.primaryButton} onPress={writeNewEvent}>
           <Text style={styles.primaryButtonText}>Write your first story</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={styles.secondaryButton} onPress={openCalendarJournal}>
+          <Text style={styles.secondaryButtonText}>Choose a date instead</Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -98,9 +136,7 @@ export default function EventsPage() {
           <Text style={styles.topActionText}>←</Text>
         </TouchableOpacity>
 
-        <Text style={[styles.topTitle, handwritingFont ? { fontFamily: handwritingFont } : null]}>
-          Events
-        </Text>
+        <View style={styles.topTitle} />
 
         <TouchableOpacity onPress={writeNewEvent} style={[styles.topAction, styles.addAction]}>
           <Text style={styles.addActionText}>+</Text>
@@ -111,7 +147,12 @@ export default function EventsPage() {
         data={events}
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
-          <EventCard event={item} onPress={openEvent} titleFontFamily={handwritingBold} />
+          <EventCard
+            event={item}
+            onPress={openEvent}
+            onDeletePress={confirmRemoveStory}
+            titleFontFamily={handwritingBold}
+          />
         )}
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmpty}
@@ -181,23 +222,10 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     paddingTop: 10,
   },
-  kicker: {
-    color: colors.diary.accent,
-    fontSize: 20,
-    marginBottom: 2,
-  },
   title: {
     color: colors.diary.ink,
     fontSize: 42,
     lineHeight: 48,
-    textAlign: "left",
-    writingDirection: "ltr",
-  },
-  subtitle: {
-    color: colors.diary.inkMid,
-    fontSize: 15,
-    lineHeight: 22,
-    maxWidth: 320,
     textAlign: "left",
     writingDirection: "ltr",
   },
@@ -248,6 +276,7 @@ const styles = StyleSheet.create({
     borderColor: colors.diary.divider,
     borderRadius: radius.full,
     borderWidth: 1,
+    marginTop: 10,
     paddingHorizontal: 18,
     paddingVertical: 10,
   },

@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   StatusBar,
+  useWindowDimensions,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useFonts, Caveat_400Regular, Caveat_700Bold } from "@expo-google-fonts/caveat";
@@ -21,16 +22,25 @@ import DiaryDateBanner from "../components/diary/DiaryDateBanner";
 import DiaryTitleField from "../components/diary/DiaryTitleField";
 import DiaryBodyField from "../components/diary/DiaryBodyField";
 import DiaryTagRow from "../components/diary/DiaryTagRow";
+import CalendarSidePanel from "../components/diary/CalendarSidePanel";
 import { colors } from "../styles/colors";
+
+function getLocalDateKey(dateValue = new Date()) {
+  const year = dateValue.getFullYear();
+  const month = String(dateValue.getMonth() + 1).padStart(2, "0");
+  const day = String(dateValue.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 export default function WritingPage() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { eventId, date } = route.params || {};
+  const { eventId, date, showCalendar } = route.params || {};
+  const { width } = useWindowDimensions();
 
   const [fontsLoaded] = useFonts({ Caveat_400Regular, Caveat_700Bold });
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = getLocalDateKey();
   const initialDate = date || today;
 
   const { createEvent, updateEvent } = useEvents();
@@ -47,6 +57,8 @@ export default function WritingPage() {
   const [showSavedActions, setShowSavedActions] = useState(false);
 
   const isEditing = Boolean(eventId);
+  const showCalendarPanel = Boolean(showCalendar) && !isEditing;
+  const isWideLayout = width >= 860;
 
   const loadEvent = useCallback(async () => {
     if (!eventId) return;
@@ -68,6 +80,16 @@ export default function WritingPage() {
     fetchTags();
     loadEvent();
   }, [fetchTags, loadEvent]);
+
+  useEffect(() => {
+    if (isEditing) return;
+    setEventDate(initialDate);
+    setTitle("");
+    setContent("");
+    setSelectedTagIds([]);
+    setErrors({});
+    setShowSavedActions(false);
+  }, [initialDate, isEditing]);
 
   const toggleTag = (id) => {
     setSelectedTagIds((prev) =>
@@ -123,6 +145,11 @@ export default function WritingPage() {
     setShowSavedActions(false);
   };
 
+  const selectCalendarDate = (dateKey) => {
+    setEventDate(dateKey);
+    setShowSavedActions(false);
+  };
+
   const finishWriting = () => {
     if (navigation.canGoBack()) {
       navigation.goBack();
@@ -159,7 +186,7 @@ export default function WritingPage() {
         </TouchableOpacity>
 
         <Text style={[styles.topTitle, handwritingFont ? { fontFamily: handwritingFont } : null]}>
-          {isEditing ? "Edit memory" : "New entry"}
+          {isEditing ? "Edit memory" : showCalendarPanel ? "Calendar journal" : "New entry"}
         </Text>
 
         <TouchableOpacity
@@ -181,61 +208,75 @@ export default function WritingPage() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {showSavedActions ? (
-          <View style={styles.savedCard}>
-            <Text style={[styles.savedTitle, handwritingFont ? { fontFamily: handwritingFont } : null]}>
-              Saved to your journal
-            </Text>
-            <Text style={styles.savedText}>
-              "{savedEntryTitle}" is saved. You can write another event for this same day.
-            </Text>
-            <View style={styles.savedActions}>
-              <TouchableOpacity style={styles.writeAnotherBtn} onPress={startNewEvent}>
-                <Text style={styles.writeAnotherText}>Write another event</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.doneBtn} onPress={finishWriting}>
-                <Text style={styles.doneText}>Done for now</Text>
+        <View style={[styles.journalLayout, showCalendarPanel && isWideLayout && styles.journalLayoutWide]}>
+          {showCalendarPanel ? (
+            <View style={[styles.calendarPanelWrap, !isWideLayout && styles.calendarPanelWrapNarrow]}>
+              <CalendarSidePanel
+                selectedDate={eventDate}
+                onSelectDate={selectCalendarDate}
+                titleFontFamily={handwritingBold}
+              />
+            </View>
+          ) : null}
+
+          <View style={styles.journalColumn}>
+            {showSavedActions ? (
+              <View style={styles.savedCard}>
+                <Text style={[styles.savedTitle, handwritingFont ? { fontFamily: handwritingFont } : null]}>
+                  Saved to your journal
+                </Text>
+                <Text style={styles.savedText}>
+                  "{savedEntryTitle}" is saved. You can write another event for this same day.
+                </Text>
+                <View style={styles.savedActions}>
+                  <TouchableOpacity style={styles.writeAnotherBtn} onPress={startNewEvent}>
+                    <Text style={styles.writeAnotherText}>Write another event</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.doneBtn} onPress={finishWriting}>
+                    <Text style={styles.doneText}>Done for now</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : null}
+
+            {/* The physical journal page */}
+            <JournalPage>
+              <DiaryDateBanner dateStr={eventDate} />
+
+              <DiaryTitleField
+                value={title}
+                onChangeText={setTitle}
+                error={errors.title}
+                fontFamily={handwritingBold}
+              />
+
+              <DiaryBodyField
+                value={content}
+                onChangeText={setContent}
+                fontFamily={handwritingFont}
+              />
+
+              <DiaryTagRow
+                tags={tags}
+                selectedIds={selectedTagIds}
+                onToggle={toggleTag}
+              />
+            </JournalPage>
+
+            {/* Bottom save prompt */}
+            <View style={styles.bottomRow}>
+              <TouchableOpacity
+                style={[styles.sealBtn, saving && styles.sealBtnDisabled]}
+                onPress={handleSave}
+                disabled={saving}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.sealBtnText, handwritingFont ? { fontFamily: handwritingFont } : null]}>
+                  {saving ? "Saving…" : isEditing ? "Save changes" : "Seal this memory"}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
-        ) : null}
-
-        {/* The physical journal page */}
-        <JournalPage>
-          <DiaryDateBanner dateStr={eventDate} />
-
-          <DiaryTitleField
-            value={title}
-            onChangeText={setTitle}
-            error={errors.title}
-            fontFamily={handwritingBold}
-          />
-
-          <DiaryBodyField
-            value={content}
-            onChangeText={setContent}
-            fontFamily={handwritingFont}
-          />
-
-          <DiaryTagRow
-            tags={tags}
-            selectedIds={selectedTagIds}
-            onToggle={toggleTag}
-          />
-        </JournalPage>
-
-        {/* Bottom save prompt */}
-        <View style={styles.bottomRow}>
-          <TouchableOpacity
-            style={[styles.sealBtn, saving && styles.sealBtnDisabled]}
-            onPress={handleSave}
-            disabled={saving}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.sealBtnText, handwritingFont ? { fontFamily: handwritingFont } : null]}>
-              {saving ? "Saving…" : isEditing ? "Save changes" : "Seal this memory"}
-            </Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -303,6 +344,28 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingBottom: 48,
+  },
+  journalLayout: {
+    alignItems: "center",
+  },
+  journalLayoutWide: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 20,
+    justifyContent: "center",
+    paddingHorizontal: 18,
+  },
+  calendarPanelWrap: {
+    alignItems: "center",
+    paddingTop: 8,
+  },
+  calendarPanelWrapNarrow: {
+    marginBottom: 16,
+  },
+  journalColumn: {
+    flex: 1,
+    maxWidth: 760,
+    width: "100%",
   },
   savedCard: {
     backgroundColor: colors.diary.paper,

@@ -11,7 +11,12 @@ export default function App() {
   return (
     <AuthProvider>
       <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Navigator initialRouteName="CalendarJournalPage" screenOptions={{ headerShown: false }}>
+          <Stack.Screen
+            name="CalendarJournalPage"
+            component={WritingPage}
+            initialParams={{ showCalendar: true }}
+          />
           <Stack.Screen name="WritingPage" component={WritingPage} />
           <Stack.Screen name="EventsPage" component={EventsPage} />
         </Stack.Navigator>
