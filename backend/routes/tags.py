@@ -38,6 +38,11 @@ def update(tag_id):
     if not data:
         return jsonify({"error": "No data provided"}), 400
 
+    if "name" in data:
+        data["name"] = (data.get("name") or "").strip()
+        if not data["name"]:
+            return jsonify({"error": "name is required"}), 400
+
     tag, error = update_tag(user_id, tag_id, data)
     if error:
         return jsonify({"error": error}), 404

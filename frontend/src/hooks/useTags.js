@@ -19,5 +19,26 @@ export function useTags() {
     }
   }, []);
 
-  return { tags, loading, error, fetchAll };
+  const createTag = useCallback(async (name, color) => {
+    const created = await tagService.create(name, color);
+    setTags((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+    return created;
+  }, []);
+
+  const updateTag = useCallback(async (id, payload) => {
+    const updated = await tagService.update(id, payload);
+    setTags((prev) =>
+      prev
+        .map((tag) => (tag.id === id ? updated : tag))
+        .sort((a, b) => a.name.localeCompare(b.name))
+    );
+    return updated;
+  }, []);
+
+  const deleteTagById = useCallback(async (id) => {
+    await tagService.delete(id);
+    setTags((prev) => prev.filter((tag) => tag.id !== id));
+  }, []);
+
+  return { tags, loading, error, fetchAll, createTag, updateTag, deleteTagById };
 }

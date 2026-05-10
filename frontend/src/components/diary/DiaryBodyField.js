@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { TextInput, View, StyleSheet, Platform } from "react-native";
 import { colors } from "../../styles/colors";
 
-const LINE_HEIGHT = 32;
-const LINE_COUNT = 14;
+const LINE_HEIGHT = 29;
+const LINE_COUNT = 9;
 
 /**
  * The main writing area — mimics ruled notebook paper using
@@ -71,11 +71,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.diary.ruleLine,
   },
   input: {
-    fontSize: 16,
+    fontSize: 15,
     color: colors.diary.ink,
     lineHeight: LINE_HEIGHT,
     paddingTop: Platform.OS === "ios" ? 6 : 4,
-    paddingBottom: 8,
+    paddingBottom: 6,
     paddingHorizontal: 2,
     minHeight: LINE_HEIGHT * LINE_COUNT,
     letterSpacing: 0.2,

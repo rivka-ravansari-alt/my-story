@@ -37,8 +37,8 @@ export default function DiaryDateBanner({ dateStr }) {
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
-    marginBottom: 20,
-    paddingTop: 4,
+    marginBottom: 16,
+    paddingTop: 2,
   },
   row: {
     flexDirection: "row",
@@ -52,19 +52,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.diary.divider,
   },
   weekday: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
     color: colors.diary.inkMid,
-    letterSpacing: 2,
+    letterSpacing: 1.6,
     textTransform: "uppercase",
-    marginHorizontal: 10,
+    marginHorizontal: 8,
   },
   date: {
-    fontSize: 15,
+    fontSize: 14,
     color: colors.diary.inkLight,
     fontStyle: "italic",
     letterSpacing: 0.3,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   decorDivider: {
     flexDirection: "row",
@@ -77,8 +77,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.diary.divider,
   },
   decorSymbol: {
-    fontSize: 10,
+    fontSize: 9,
     color: colors.diary.accent,
-    marginHorizontal: 8,
+    marginHorizontal: 7,
   },
 });

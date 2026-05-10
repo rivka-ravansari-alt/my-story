@@ -132,15 +132,7 @@ export default function EventsPage() {
       <StatusBar barStyle="dark-content" backgroundColor={colors.diary.canvas} />
 
       <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.topAction}>
-          <Text style={styles.topActionText}>←</Text>
-        </TouchableOpacity>
-
         <View style={styles.topTitle} />
-
-        <TouchableOpacity onPress={writeNewEvent} style={[styles.topAction, styles.addAction]}>
-          <Text style={styles.addActionText}>+</Text>
-        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -179,53 +171,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.diary.canvas,
     flexDirection: "row",
-    paddingBottom: 12,
+    paddingBottom: 8,
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === "ios" ? 52 : 36,
-  },
-  topAction: {
-    alignItems: "center",
-    height: 40,
-    justifyContent: "center",
-    width: 40,
-  },
-  topActionText: {
-    color: colors.diary.inkMid,
-    fontSize: 22,
+    paddingTop: Platform.OS === "ios" ? 46 : 28,
   },
   topTitle: {
-    color: colors.diary.inkMid,
+    alignItems: "center",
     flex: 1,
-    fontSize: 20,
-    fontStyle: "italic",
-    letterSpacing: 0.3,
-    textAlign: "center",
-  },
-  addAction: {
-    backgroundColor: colors.diary.accent,
-    borderRadius: radius.full,
-    height: 36,
-    width: 36,
-  },
-  addActionText: {
-    color: colors.diary.paper,
-    fontSize: 26,
-    fontWeight: "700",
-    lineHeight: 32,
   },
   listContent: {
-    paddingBottom: 48,
+    paddingBottom: 36,
     paddingHorizontal: 16,
   },
   header: {
     alignItems: "flex-start",
-    marginBottom: 18,
-    paddingTop: 10,
+    marginBottom: 14,
+    paddingTop: 6,
   },
   title: {
     color: colors.diary.ink,
-    fontSize: 42,
-    lineHeight: 48,
+    fontSize: 32,
+    lineHeight: 38,
     textAlign: "left",
     writingDirection: "ltr",
   },
@@ -239,7 +205,7 @@ const styles = StyleSheet.create({
     borderColor: colors.diary.accentLight,
     borderRadius: radius.lg,
     borderWidth: 1,
-    padding: 22,
+    padding: 18,
     shadowColor: colors.diary.shadow,
     shadowOpacity: 0.12,
     shadowRadius: 14,
@@ -248,28 +214,28 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     color: colors.diary.ink,
-    fontSize: 26,
+    fontSize: 22,
     marginBottom: 8,
     textAlign: "left",
     writingDirection: "ltr",
   },
   emptyText: {
     color: colors.diary.inkMid,
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 18,
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 14,
     textAlign: "left",
     writingDirection: "ltr",
   },
   primaryButton: {
     backgroundColor: colors.diary.ink,
     borderRadius: radius.full,
-    paddingHorizontal: 18,
-    paddingVertical: 11,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
   },
   primaryButtonText: {
     color: colors.diary.paper,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
   },
   secondaryButton: {
@@ -277,12 +243,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     borderWidth: 1,
     marginTop: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
   },
   secondaryButtonText: {
     color: colors.diary.inkMid,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
   },
 });

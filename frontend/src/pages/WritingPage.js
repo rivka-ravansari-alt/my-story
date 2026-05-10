@@ -12,7 +12,7 @@ import {
   StatusBar,
   useWindowDimensions,
 } from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { useFonts, Caveat_400Regular, Caveat_700Bold } from "@expo-google-fonts/caveat";
 import { useEvents } from "../hooks/useEvents";
 import { useTags } from "../hooks/useTags";
@@ -21,8 +21,8 @@ import JournalPage from "../components/diary/JournalPage";
 import DiaryDateBanner from "../components/diary/DiaryDateBanner";
 import DiaryTitleField from "../components/diary/DiaryTitleField";
 import DiaryBodyField from "../components/diary/DiaryBodyField";
-import DiaryTagRow from "../components/diary/DiaryTagRow";
 import CalendarSidePanel from "../components/diary/CalendarSidePanel";
+import SaveTagsModal from "../components/diary/SaveTagsModal";
 import { colors } from "../styles/colors";
 
 function getLocalDateKey(dateValue = new Date()) {
@@ -55,6 +55,7 @@ export default function WritingPage() {
   const [errors, setErrors] = useState({});
   const [savedEntryTitle, setSavedEntryTitle] = useState("");
   const [showSavedActions, setShowSavedActions] = useState(false);
+  const [tagModalVisible, setTagModalVisible] = useState(false);
 
   const isEditing = Boolean(eventId);
   const showCalendarPanel = Boolean(showCalendar) && !isEditing;
@@ -77,9 +78,14 @@ export default function WritingPage() {
   }, [eventId, initialDate]);
 
   useEffect(() => {
-    fetchTags();
     loadEvent();
-  }, [fetchTags, loadEvent]);
+  }, [loadEvent]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchTags();
+    }, [fetchTags])
+  );
 
   useEffect(() => {
     if (isEditing) return;
@@ -91,12 +97,6 @@ export default function WritingPage() {
     setShowSavedActions(false);
   }, [initialDate, isEditing]);
 
-  const toggleTag = (id) => {
-    setSelectedTagIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  };
-
   const validate = () => {
     const errs = {};
     if (!title.trim()) errs.title = "Your story needs a title";
@@ -104,18 +104,24 @@ export default function WritingPage() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSave = async () => {
+  const openSaveTagsModal = () => {
     if (!validate()) return;
+    setTagModalVisible(true);
+  };
+
+  const saveStory = async (tagIds) => {
     setSaving(true);
     try {
       const payload = {
         title: title.trim(),
         content,
         event_date: eventDate,
-        tag_ids: selectedTagIds,
+        tag_ids: tagIds,
       };
       if (isEditing) {
         await updateEvent(eventId, payload);
+        setSelectedTagIds(tagIds);
+        setTagModalVisible(false);
         navigation.goBack();
       } else {
         await createEvent(payload);
@@ -125,6 +131,7 @@ export default function WritingPage() {
         setSelectedTagIds([]);
         setErrors({});
         setShowSavedActions(true);
+        setTagModalVisible(false);
       }
     } catch (e) {
       console.error("Failed to save event", e.details || e);
@@ -137,12 +144,17 @@ export default function WritingPage() {
     }
   };
 
+  const skipTagsAndSave = () => {
+    saveStory([]);
+  };
+
   const startNewEvent = () => {
     setTitle("");
     setContent("");
     setSelectedTagIds([]);
     setErrors({});
     setShowSavedActions(false);
+    setTagModalVisible(false);
   };
 
   const selectCalendarDate = (dateKey) => {
@@ -178,19 +190,27 @@ export default function WritingPage() {
 
       {/* Top bar */}
       <View style={styles.topBar}>
-        <TouchableOpacity
-          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate("EventsPage"))}
-          style={styles.topAction}
-        >
-          <Text style={styles.topActionIcon}>{navigation.canGoBack() ? "←" : "Stories"}</Text>
-        </TouchableOpacity>
+        {showCalendarPanel ? (
+          <View style={styles.topAction} />
+        ) : (
+          <TouchableOpacity
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate("EventsPage"))}
+            style={styles.topAction}
+          >
+            <Text style={styles.topActionIcon}>{navigation.canGoBack() ? "←" : "Stories"}</Text>
+          </TouchableOpacity>
+        )}
 
-        <Text style={[styles.topTitle, handwritingFont ? { fontFamily: handwritingFont } : null]}>
-          {isEditing ? "Edit memory" : showCalendarPanel ? "Calendar journal" : "New entry"}
-        </Text>
+        {showCalendarPanel ? (
+          <View style={styles.topTitle} />
+        ) : (
+          <Text style={[styles.topTitle, handwritingFont ? { fontFamily: handwritingFont } : null]}>
+            {isEditing ? "Edit memory" : "New entry"}
+          </Text>
+        )}
 
         <TouchableOpacity
-          onPress={handleSave}
+          onPress={openSaveTagsModal}
           disabled={saving}
           style={[styles.topAction, styles.saveAction, saving && styles.saveActionDisabled]}
         >
@@ -255,19 +275,13 @@ export default function WritingPage() {
                 onChangeText={setContent}
                 fontFamily={handwritingFont}
               />
-
-              <DiaryTagRow
-                tags={tags}
-                selectedIds={selectedTagIds}
-                onToggle={toggleTag}
-              />
             </JournalPage>
 
             {/* Bottom save prompt */}
             <View style={styles.bottomRow}>
               <TouchableOpacity
                 style={[styles.sealBtn, saving && styles.sealBtnDisabled]}
-                onPress={handleSave}
+                onPress={openSaveTagsModal}
                 disabled={saving}
                 activeOpacity={0.8}
               >
@@ -279,6 +293,17 @@ export default function WritingPage() {
           </View>
         </View>
       </ScrollView>
+
+      <SaveTagsModal
+        visible={tagModalVisible}
+        tags={tags}
+        initialSelectedIds={selectedTagIds}
+        saving={saving}
+        isEditing={isEditing}
+        onClose={() => setTagModalVisible(false)}
+        onSave={saveStory}
+        onSkip={skipTagsAndSave}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -297,9 +322,9 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === "ios" ? 52 : 36,
-    paddingBottom: 12,
+    paddingHorizontal: 14,
+    paddingTop: Platform.OS === "ios" ? 46 : 28,
+    paddingBottom: 8,
     backgroundColor: colors.diary.canvas,
   },
   topAction: {
@@ -312,7 +337,7 @@ const styles = StyleSheet.create({
   topTitle: {
     flex: 1,
     textAlign: "center",
-    fontSize: 20,
+    fontSize: 18,
     color: colors.diary.inkMid,
     fontStyle: "italic",
     letterSpacing: 0.3,
@@ -343,7 +368,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.diary.canvas,
   },
   scroll: {
-    paddingBottom: 48,
+    paddingBottom: 36,
   },
   journalLayout: {
     alignItems: "center",
@@ -351,20 +376,20 @@ const styles = StyleSheet.create({
   journalLayoutWide: {
     alignItems: "flex-start",
     flexDirection: "row",
-    gap: 20,
+    gap: 16,
     justifyContent: "center",
-    paddingHorizontal: 18,
+    paddingHorizontal: 14,
   },
   calendarPanelWrap: {
     alignItems: "center",
-    paddingTop: 8,
+    paddingTop: 6,
   },
   calendarPanelWrapNarrow: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   journalColumn: {
     flex: 1,
-    maxWidth: 760,
+    maxWidth: 620,
     width: "100%",
   },
   savedCard: {
@@ -422,13 +447,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   bottomRow: {
-    marginHorizontal: 32,
-    marginTop: 8,
+    marginHorizontal: 28,
+    marginTop: 6,
   },
   sealBtn: {
     backgroundColor: colors.diary.ink,
     borderRadius: 99,
-    paddingVertical: 14,
+    paddingVertical: 12,
     alignItems: "center",
   },
   sealBtnDisabled: {
@@ -436,7 +461,7 @@ const styles = StyleSheet.create({
   },
   sealBtnText: {
     color: colors.diary.paper,
-    fontSize: 18,
+    fontSize: 17,
     letterSpacing: 0.5,
   },
 });

@@ -48,6 +48,7 @@ def delete_event(user_id, event_id):
     event = get_event_by_id(user_id, event_id)
     if not event:
         return False, "Event not found"
+    event.tags.clear()
     db.session.delete(event)
     db.session.commit()
     return True, None

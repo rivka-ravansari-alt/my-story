@@ -41,17 +41,17 @@ export default function DiaryTitleField({
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   input: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "700",
     fontStyle: "italic",
     color: colors.diary.ink,
-    paddingVertical: 6,
+    paddingVertical: 5,
     paddingHorizontal: 0,
     letterSpacing: -0.3,
-    lineHeight: 32,
+    lineHeight: 29,
   },
   focused: {
     color: colors.diary.ink,
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   underline: {
     height: 1.5,
     backgroundColor: colors.diary.ruleLine,
-    marginTop: 4,
+    marginTop: 3,
   },
   underlineFocused: {
     backgroundColor: colors.diary.accent,
