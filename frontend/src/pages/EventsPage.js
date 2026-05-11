@@ -15,6 +15,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useFonts, Caveat_400Regular, Caveat_700Bold } from "@expo-google-fonts/caveat";
 import EventCard from "../components/events/EventCard";
 import { useEvents } from "../hooks/useEvents";
+import { exportStoryAsTxt } from "../services/storyTxtExport";
 import { colors } from "../styles/colors";
 import { radius } from "../styles/spacing";
 
@@ -42,6 +43,20 @@ export default function EventsPage() {
 
   const openCalendarJournal = () => {
     navigation.navigate("CalendarJournalPage");
+  };
+
+  const downloadStoryTxt = async (event) => {
+    try {
+      await exportStoryAsTxt(event);
+    } catch (e) {
+      const message =
+        e?.message || "Something went wrong while exporting your story. Please try again.";
+      if (Platform.OS === "web") {
+        window.alert?.(`Could not export\n\n${message}`);
+        return;
+      }
+      Alert.alert("Could not export", message);
+    }
   };
 
   const confirmRemoveStory = (event) => {
@@ -142,6 +157,7 @@ export default function EventsPage() {
           <EventCard
             event={item}
             onPress={openEvent}
+            onDownloadTxtPress={downloadStoryTxt}
             onDeletePress={confirmRemoveStory}
             titleFontFamily={handwritingBold}
           />
