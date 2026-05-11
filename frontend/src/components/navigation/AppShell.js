@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { useFonts, Caveat_700Bold } from "@expo-google-fonts/caveat";
+import { useAuth } from "../../context/AuthContext";
 import { colors } from "../../styles/colors";
 import { radius } from "../../styles/spacing";
 
@@ -77,6 +78,7 @@ function SidebarContent({
   collapsed,
   onCloseDrawer,
   onNavigate,
+  onLogout,
   onToggleCollapsed,
   showCollapseControl,
   titleFontFamily,
@@ -127,6 +129,17 @@ function SidebarContent({
       </View>
 
       <View style={styles.sidebarFooter}>
+        <TouchableOpacity
+          activeOpacity={0.84}
+          onPress={onLogout}
+          style={[styles.utilityButton, collapsed && styles.utilityButtonCollapsed]}
+        >
+          <View style={styles.utilityBadge}>
+            <Text style={styles.utilityBadgeText}>×</Text>
+          </View>
+          {showLabels ? <Text style={styles.utilityTitle}>Sign out</Text> : null}
+        </TouchableOpacity>
+
         {showCollapseControl ? (
           <TouchableOpacity
             activeOpacity={0.84}
@@ -153,6 +166,7 @@ function SidebarContent({
 }
 
 export default function AppShell({ activeRouteName, children, navigation }) {
+  const { logout } = useAuth();
   const { width } = useWindowDimensions();
   const isMobile = width < MOBILE_BREAKPOINT;
   const [fontsLoaded] = useFonts({ Caveat_700Bold });
@@ -195,6 +209,7 @@ export default function AppShell({ activeRouteName, children, navigation }) {
           <SidebarContent
             activeRouteName={activeRouteName}
             collapsed={effectiveCollapsed}
+            onLogout={logout}
             onNavigate={navigateTo}
             onToggleCollapsed={toggleCollapsed}
             showCollapseControl
@@ -236,6 +251,7 @@ export default function AppShell({ activeRouteName, children, navigation }) {
               activeRouteName={activeRouteName}
               collapsed={false}
               onCloseDrawer={() => setDrawerOpen(false)}
+              onLogout={logout}
               onNavigate={navigateTo}
               showCollapseControl={false}
               titleFontFamily={titleFontFamily}

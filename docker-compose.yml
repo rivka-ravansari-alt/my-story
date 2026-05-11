@@ -8,6 +8,7 @@ services:
       - "8080:8080"
     environment:
       - FLASK_ENV=production
+      - GOOGLE_CLIENT_ID=110058684309-8a4flsr03gj5da1kssqna09fro1ghrs2.apps.googleusercontent.com
     restart: unless-stopped
 
   frontend:
@@ -19,4 +20,5 @@ services:
       - backend
     environment:
       - EXPO_PUBLIC_API_URL=http://localhost:8080
+      - EXPO_PUBLIC_GOOGLE_CLIENT_ID=110058684309-8a4flsr03gj5da1kssqna09fro1ghrs2.apps.googleusercontent.com
     restart: unless-stopped

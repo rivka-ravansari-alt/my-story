@@ -8,20 +8,25 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    authService.getStoredUser().then((stored) => {
-      setUser(stored);
+    authService.getStoredSession().then((session) => {
+      setUser(session?.user || null);
       setLoading(false);
     });
   }, []);
 
-  const login = useCallback(async (username, password) => {
-    const data = await authService.login(username, password);
-    setUser(data.user);
-    return data;
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const clearUser = () => {
+      setUser(null);
+    };
+
+    window.addEventListener("auth:unauthorized", clearUser);
+    return () => window.removeEventListener("auth:unauthorized", clearUser);
   }, []);
 
-  const register = useCallback(async (username, email, password) => {
-    const data = await authService.register(username, email, password);
+  const loginWithGoogle = useCallback(async (idToken) => {
+    const data = await authService.loginWithGoogle(idToken);
     setUser(data.user);
     return data;
   }, []);
@@ -32,7 +37,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );

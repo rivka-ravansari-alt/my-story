@@ -44,6 +44,13 @@ api.interceptors.response.use(
   (error) => {
     const serverMessage = error?.response?.data?.error;
     const status = error?.response?.status;
+    if (status === 401) {
+      AsyncStorage.multiRemove(["auth_token", "auth_user"]);
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        window.dispatchEvent(new Event("auth:unauthorized"));
+      }
+    }
+
     const networkMessage = `Cannot reach the server at ${api.defaults.baseURL}. Make sure the Flask backend is running, then try again.`;
     const message = serverMessage || (error?.request ? networkMessage : error?.message) || "An error occurred";
     const apiError = new Error(message);
