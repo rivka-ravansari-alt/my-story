@@ -15,6 +15,8 @@ import models  # noqa: F401 — registers all ORM models with SQLAlchemy
 from routes.auth import auth_bp
 from routes.events import events_bp
 from routes.tags import tags_bp
+from routes.exercise_templates import exercise_templates_bp
+from routes.exercises import exercises_bp
 
 
 def create_app():
@@ -30,6 +32,8 @@ def create_app():
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(events_bp, url_prefix="/api/events")
     app.register_blueprint(tags_bp, url_prefix="/api/tags")
+    app.register_blueprint(exercise_templates_bp, url_prefix="/api/exercise-templates")
+    app.register_blueprint(exercises_bp, url_prefix="/api/exercises")
 
     @app.route("/")
     def index():

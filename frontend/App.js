@@ -5,10 +5,11 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { AuthProvider, useAuth } from "./src/context/AuthContext";
 import AppShell from "./src/components/navigation/AppShell";
+import SettingsNavigator from "./src/navigation/SettingsNavigator";
 import LoginPage from "./src/pages/LoginPage";
 import WritingPage from "./src/pages/WritingPage";
 import EventsPage from "./src/pages/EventsPage";
-import TagsPage from "./src/pages/TagsPage";
+import ExercisesPage from "./src/pages/ExercisesPage";
 import { googleAuthConfig } from "./src/config/googleAuthConfig";
 import { colors } from "./src/styles/colors";
 
@@ -27,7 +28,8 @@ function withAppShell(Component) {
 const CalendarJournalScreen = withAppShell(WritingPage);
 const WritingScreen = withAppShell(WritingPage);
 const EventsScreen = withAppShell(EventsPage);
-const TagsScreen = withAppShell(TagsPage);
+const SettingsScreen = withAppShell(SettingsNavigator);
+const ExercisesScreen = withAppShell(ExercisesPage);
 
 function AppNavigator() {
   const { user, loading } = useAuth();
@@ -54,7 +56,8 @@ function AppNavigator() {
         />
         <Stack.Screen name="WritingPage" component={WritingScreen} />
         <Stack.Screen name="EventsPage" component={EventsScreen} />
-        <Stack.Screen name="TagsPage" component={TagsScreen} />
+        <Stack.Screen name="ExercisesPage" component={ExercisesScreen} />
+        <Stack.Screen name="SettingsPage" component={SettingsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

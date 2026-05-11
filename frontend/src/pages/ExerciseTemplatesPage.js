@@ -8,29 +8,22 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useFonts, Caveat_700Bold } from "@expo-google-fonts/caveat";
-import TagListItem from "../components/tags/TagListItem";
-import { useTags } from "../hooks/useTags";
+import ExerciseTemplateCard from "../components/exercises/ExerciseTemplateCard";
+import ExerciseTemplateForm from "../components/exercises/ExerciseTemplateForm";
+import { useExerciseTemplates } from "../hooks/useExerciseTemplates";
 import { colors } from "../styles/colors";
 import { radius } from "../styles/spacing";
 
-const DEFAULT_TAG_COLOR = "#B8780A";
-
-export default function TagsPage() {
+export default function ExerciseTemplatesPage() {
   const navigation = useNavigation();
-  const { tags, loading, error, fetchAll, createTag, updateTag, deleteTagById } = useTags();
+  const { templates, loading, error, fetchAll, createTemplate, deleteTemplateById } = useExerciseTemplates();
   const [fontsLoaded] = useFonts({ Caveat_700Bold });
-
-  const [newTagName, setNewTagName] = useState("");
-  const [editingId, setEditingId] = useState(null);
-  const [draftName, setDraftName] = useState("");
   const [saving, setSaving] = useState(false);
-
   const handwritingBold = fontsLoaded ? "Caveat_700Bold" : undefined;
 
   useFocusEffect(
@@ -47,73 +40,50 @@ export default function TagsPage() {
     Alert.alert(title, message);
   };
 
-  const handleCreate = async () => {
-    const name = newTagName.trim();
-    if (!name) {
-      showError("Tag name required", "Please enter a name for the new tag.");
-      return;
+  const handleCreate = async (payload) => {
+    if (!payload.name) {
+      showError("Template name required", "Please enter a name for this template.");
+      return false;
+    }
+
+    const cleanedFields = payload.fields.filter((field) => field.label);
+    if (cleanedFields.length === 0) {
+      showError("Question required", "Add at least one question or field.");
+      return false;
     }
 
     setSaving(true);
     try {
-      await createTag(name, DEFAULT_TAG_COLOR);
-      setNewTagName("");
+      await createTemplate({ ...payload, fields: cleanedFields });
+      return true;
     } catch (e) {
-      showError("Could not add tag", e.message);
+      showError("Could not add template", e.message);
+      return false;
     } finally {
       setSaving(false);
     }
   };
 
-  const startEdit = (tag) => {
-    setEditingId(tag.id);
-    setDraftName(tag.name);
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setDraftName("");
-  };
-
-  const saveEdit = async (tag) => {
-    const name = draftName.trim();
-    if (!name) {
-      showError("Tag name required", "Tag names cannot be empty.");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await updateTag(tag.id, { name });
-      cancelEdit();
-    } catch (e) {
-      showError("Could not update tag", e.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const confirmDelete = (tag) => {
+  const confirmDelete = (template) => {
     const runDelete = async () => {
       setSaving(true);
       try {
-        await deleteTagById(tag.id);
-        if (editingId === tag.id) cancelEdit();
+        await deleteTemplateById(template.id);
       } catch (e) {
-        showError("Could not delete tag", e.message);
+        showError("Could not delete template", e.message);
       } finally {
         setSaving(false);
       }
     };
 
-    const message = `"${tag.name}" will be removed from your tag list and from any stories that use it.`;
+    const message = `"${template.name}" will be removed. Existing exercises keep their saved answers.`;
 
     if (Platform.OS === "web" && typeof window !== "undefined" && typeof window.confirm === "function") {
-      if (window.confirm(`Delete tag?\n\n${message}`)) void runDelete();
+      if (window.confirm(`Delete template?\n\n${message}`)) void runDelete();
       return;
     }
 
-    Alert.alert("Delete tag?", message, [
+    Alert.alert("Delete template?", message, [
       { text: "Cancel", style: "cancel" },
       { text: "Delete", style: "destructive", onPress: () => void runDelete() },
     ]);
@@ -131,7 +101,7 @@ export default function TagsPage() {
     if (error) {
       return (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>Could not load tags</Text>
+          <Text style={styles.emptyTitle}>Could not load templates</Text>
           <Text style={styles.emptyText}>{error}</Text>
           <TouchableOpacity style={styles.secondaryButton} onPress={fetchAll}>
             <Text style={styles.secondaryButtonText}>Try again</Text>
@@ -143,10 +113,10 @@ export default function TagsPage() {
     return (
       <View style={styles.emptyCard}>
         <Text style={[styles.emptyTitle, handwritingBold ? { fontFamily: handwritingBold } : null]}>
-          No tags yet
+          No templates yet
         </Text>
         <Text style={styles.emptyText}>
-          Add tags like Family, Travel, Dreams, or School so you can mark each journal story.
+          Create reusable question structures for check-ins, thought records, reflections, or therapy homework.
         </Text>
       </View>
     );
@@ -166,60 +136,34 @@ export default function TagsPage() {
           <Text style={styles.topActionText}>{"<"}</Text>
         </TouchableOpacity>
         <Text style={[styles.topTitle, handwritingBold ? { fontFamily: handwritingBold } : null]}>
-          Tags
+          Exercise templates
         </Text>
         <View style={styles.topAction} />
       </View>
 
       <FlatList
-        data={tags}
+        data={templates}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
-            refreshing={loading && tags.length > 0}
+            refreshing={loading && templates.length > 0}
             onRefresh={fetchAll}
             tintColor={colors.diary.accent}
           />
         }
         ListHeaderComponent={
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Add a new tag</Text>
-            <View style={styles.createRow}>
-              <TextInput
-                value={newTagName}
-                onChangeText={setNewTagName}
-                onSubmitEditing={handleCreate}
-                placeholder="Tag name"
-                placeholderTextColor={colors.diary.inkLight}
-                style={styles.createInput}
-              />
-              <TouchableOpacity
-                style={[styles.addButton, saving && styles.disabled]}
-                onPress={handleCreate}
-                disabled={saving}
-              >
-                <Text style={styles.addButtonText}>Add</Text>
-              </TouchableOpacity>
+          <>
+            <View style={styles.header}>
+              <Text style={styles.subtitle}>
+                Build reusable question sets for therapy and self-development exercises.
+              </Text>
             </View>
-          </View>
+            <ExerciseTemplateForm onSubmit={handleCreate} saving={saving} />
+          </>
         }
         ListEmptyComponent={renderEmpty}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <TagListItem
-              tag={item}
-              editing={editingId === item.id}
-              draftName={draftName}
-              saving={saving}
-              onChangeDraftName={setDraftName}
-              onStartEdit={() => startEdit(item)}
-              onCancelEdit={cancelEdit}
-              onSaveEdit={() => saveEdit(item)}
-              onDelete={() => confirmDelete(item)}
-            />
-          </View>
-        )}
+        renderItem={({ item }) => <ExerciseTemplateCard template={item} onDelete={() => confirmDelete(item)} />}
         showsVerticalScrollIndicator={false}
       />
     </View>
@@ -255,65 +199,24 @@ const styles = StyleSheet.create({
     fontSize: 28,
     lineHeight: 34,
     textAlign: "center",
-    writingDirection: "ltr",
   },
   listContent: {
     paddingBottom: 36,
     paddingHorizontal: 16,
+    paddingTop: 8,
   },
-  card: {
-    backgroundColor: colors.diary.paper,
-    borderColor: colors.diary.accentLight,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    marginBottom: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    shadowColor: colors.diary.shadow,
-    shadowOpacity: 0.12,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+  header: {
+    alignItems: "flex-start",
+    marginBottom: 14,
+    paddingTop: 2,
   },
-  sectionTitle: {
-    color: colors.diary.ink,
+  subtitle: {
+    color: colors.diary.inkMid,
     fontSize: 14,
-    fontWeight: "800",
-    marginBottom: 10,
+    lineHeight: 20,
+    marginTop: 0,
     textAlign: "left",
     writingDirection: "ltr",
-  },
-  createRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 10,
-  },
-  createInput: {
-    backgroundColor: colors.diary.paperAlt,
-    borderColor: colors.diary.divider,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    color: colors.diary.ink,
-    flex: 1,
-    fontSize: 14,
-    paddingHorizontal: 11,
-    paddingVertical: 9,
-    textAlign: "left",
-    writingDirection: "auto",
-  },
-  addButton: {
-    backgroundColor: colors.diary.ink,
-    borderRadius: radius.full,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-  },
-  disabled: {
-    opacity: 0.6,
-  },
-  addButtonText: {
-    color: colors.diary.paper,
-    fontSize: 13,
-    fontWeight: "700",
   },
   centerState: {
     alignItems: "center",

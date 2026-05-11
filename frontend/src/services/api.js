@@ -4,7 +4,23 @@ import { Platform } from "react-native";
 
 const PROD_URL = "https://my-story-sk5b.onrender.com";
 const ENV = typeof process !== "undefined" ? process.env : {};
-const CONFIGURED_URL = ENV.EXPO_PUBLIC_API_URL || ENV.API_URL;
+
+/** Avoid "localhost" → IPv6 (::1) when the API listens on IPv4 only (common with Flask on Windows). */
+function preferIpv4Loopback(url) {
+  if (typeof url !== "string" || !url.trim()) return url;
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "localhost") {
+      parsed.hostname = "127.0.0.1";
+      return parsed.toString();
+    }
+  } catch {
+    // ignore invalid URLs
+  }
+  return url;
+}
+
+const CONFIGURED_URL = preferIpv4Loopback(ENV.EXPO_PUBLIC_API_URL || ENV.API_URL);
 
 function getDevUrl() {
   if (Platform.OS === "android") {
@@ -16,10 +32,16 @@ function getDevUrl() {
       return PROD_URL;
     }
 
-    return `http://${window.location.hostname}:8080`;
+    const host = window.location.hostname;
+    // Browsers often resolve "localhost" to IPv6 (::1). If the API only listens on
+    // IPv4 (127.0.0.1), axios sees a network error with no HTTP response.
+    if (host === "localhost" || host === "127.0.0.1") {
+      return "http://127.0.0.1:8080";
+    }
+    return `http://${host}:8080`;
   }
 
-  return "http://localhost:8080";
+  return "http://127.0.0.1:8080";
 }
 
 const DEV_URL = getDevUrl();
@@ -42,7 +64,8 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const serverMessage = error?.response?.data?.error;
+    const responseData = error?.response?.data;
+    const serverMessage = responseData?.error || responseData?.msg || responseData?.message;
     const status = error?.response?.status;
     if (status === 401) {
       AsyncStorage.multiRemove(["auth_token", "auth_user"]);
@@ -51,8 +74,14 @@ api.interceptors.response.use(
       }
     }
 
-    const networkMessage = `Cannot reach the server at ${api.defaults.baseURL}. Make sure the Flask backend is running, then try again.`;
-    const message = serverMessage || (error?.request ? networkMessage : error?.message) || "An error occurred";
+    const code = error?.code;
+    const networkMessage = `Cannot reach the server at ${api.defaults.baseURL}.${
+      code ? ` (${code})` : ""
+    } Make sure the Flask backend is listening on port 8080 (try opening http://127.0.0.1:8080/api/health in your browser).`;
+    const message =
+      serverMessage ||
+      (error?.response ? `Request failed with status ${status}` : error?.request ? networkMessage : error?.message) ||
+      "An error occurred";
     const apiError = new Error(message);
 
     apiError.status = status;
@@ -62,6 +91,7 @@ api.interceptors.response.use(
       url: error?.config?.url,
       serverMessage,
       originalMessage: error?.message,
+      code: error?.code,
     };
 
     return Promise.reject(apiError);

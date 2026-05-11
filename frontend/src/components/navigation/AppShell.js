@@ -33,14 +33,38 @@ const NAV_ITEMS = [
     matchRoutes: ["EventsPage", "WritingPage"],
   },
   {
-    label: "Tags",
-    routeName: "TagsPage",
-    icon: "tags",
-    matchRoutes: ["TagsPage"],
+    label: "Exercises",
+    routeName: "ExercisesPage",
+    icon: "exercises",
+    matchRoutes: ["ExercisesPage"],
+  },
+  {
+    label: "Settings",
+    routeName: "SettingsPage",
+    icon: "settings",
+    matchRoutes: ["SettingsPage"],
   },
 ];
 
 function NavigationIcon({ active, type }) {
+  if (type === "journal") {
+    return (
+      <View style={[styles.journalIcon, active && styles.navGlyphBorderActive]}>
+        <View style={[styles.journalRule, active && styles.navGlyphActive]} />
+        <View style={[styles.journalRule, active && styles.navGlyphActive]} />
+        <View style={[styles.journalRule, styles.journalRuleShort, active && styles.navGlyphActive]} />
+      </View>
+    );
+  }
+
+  if (type === "settings") {
+    return (
+      <View style={[styles.settingsIconOuter, active && styles.navGlyphBorderActive]}>
+        <View style={[styles.settingsIconInner, active && styles.navGlyphActive]} />
+      </View>
+    );
+  }
+
   if (type === "calendar") {
     return (
       <View style={[styles.calendarIcon, active && styles.navGlyphBorderActive]}>
@@ -61,6 +85,25 @@ function NavigationIcon({ active, type }) {
         <View style={[styles.storyIconLine, active && styles.navGlyphActive]} />
         <View style={[styles.storyIconLine, styles.storyIconLineShort, active && styles.navGlyphActive]} />
         <View style={[styles.storyIconLine, active && styles.navGlyphActive]} />
+      </View>
+    );
+  }
+
+  if (type === "templates") {
+    return (
+      <View style={[styles.templateIcon, active && styles.navGlyphBorderActive]}>
+        <View style={[styles.templateIconLine, active && styles.navGlyphActive]} />
+        <View style={[styles.templateIconLine, styles.templateIconLineShort, active && styles.navGlyphActive]} />
+        <View style={[styles.templateIconDot, active && styles.navGlyphActive]} />
+      </View>
+    );
+  }
+
+  if (type === "exercises") {
+    return (
+      <View style={[styles.exerciseIcon, active && styles.navGlyphBorderActive]}>
+        <View style={[styles.exerciseIconCircle, active && styles.navGlyphBorderActive]} />
+        <View style={[styles.exerciseIconLine, active && styles.navGlyphActive]} />
       </View>
     );
   }
@@ -195,6 +238,10 @@ export default function AppShell({ activeRouteName, children, navigation }) {
 
   const navigateTo = (routeName) => {
     setDrawerOpen(false);
+    if (routeName === "SettingsPage") {
+      navigation.navigate("SettingsPage", { screen: "SettingsHome" });
+      return;
+    }
     navigation.navigate(routeName);
   };
 
@@ -370,6 +417,42 @@ const styles = StyleSheet.create({
   navLabelActive: {
     color: colors.diary.ink,
   },
+  journalIcon: {
+    borderColor: colors.diary.inkMid,
+    borderRadius: 3,
+    borderWidth: 1.5,
+    flexDirection: "column",
+    gap: 3,
+    height: 18,
+    justifyContent: "center",
+    paddingHorizontal: 3,
+    paddingVertical: 4,
+    width: 14,
+  },
+  journalRule: {
+    backgroundColor: colors.diary.inkMid,
+    borderRadius: radius.full,
+    height: 1.5,
+    width: "100%",
+  },
+  journalRuleShort: {
+    width: "72%",
+  },
+  settingsIconOuter: {
+    alignItems: "center",
+    borderColor: colors.diary.inkMid,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    height: 18,
+    justifyContent: "center",
+    width: 18,
+  },
+  settingsIconInner: {
+    backgroundColor: colors.diary.inkMid,
+    borderRadius: radius.full,
+    height: 5,
+    width: 5,
+  },
   calendarIcon: {
     borderColor: colors.diary.inkMid,
     borderRadius: 3,
@@ -413,6 +496,56 @@ const styles = StyleSheet.create({
   },
   storyIconLineShort: {
     width: "70%",
+  },
+  templateIcon: {
+    borderColor: colors.diary.inkMid,
+    borderRadius: 3,
+    borderWidth: 1.5,
+    gap: 3,
+    height: 18,
+    justifyContent: "center",
+    paddingHorizontal: 3,
+    width: 18,
+  },
+  templateIconLine: {
+    backgroundColor: colors.diary.inkMid,
+    borderRadius: radius.full,
+    height: 1.5,
+    width: "100%",
+  },
+  templateIconLineShort: {
+    width: "62%",
+  },
+  templateIconDot: {
+    backgroundColor: colors.diary.inkMid,
+    borderRadius: radius.full,
+    height: 3,
+    width: 3,
+  },
+  exerciseIcon: {
+    alignItems: "center",
+    borderColor: colors.diary.inkMid,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    flexDirection: "row",
+    gap: 3,
+    height: 18,
+    justifyContent: "center",
+    paddingHorizontal: 3,
+    width: 18,
+  },
+  exerciseIconCircle: {
+    borderColor: colors.diary.inkMid,
+    borderRadius: radius.full,
+    borderWidth: 1.5,
+    height: 6,
+    width: 6,
+  },
+  exerciseIconLine: {
+    backgroundColor: colors.diary.inkMid,
+    borderRadius: radius.full,
+    height: 2,
+    width: 6,
   },
   tagIcon: {
     alignItems: "center",

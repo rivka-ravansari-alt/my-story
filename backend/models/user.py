@@ -14,6 +14,13 @@ class User(db.Model):
 
     events = db.relationship("Event", backref="author", lazy=True, cascade="all, delete-orphan")
     tags = db.relationship("Tag", backref="owner", lazy=True, cascade="all, delete-orphan")
+    exercise_templates = db.relationship(
+        "ExerciseTemplate",
+        backref="owner",
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
+    exercises = db.relationship("Exercise", backref="owner", lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
