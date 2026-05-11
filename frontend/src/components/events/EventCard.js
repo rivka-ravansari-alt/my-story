@@ -1,5 +1,6 @@
 import React from "react";
 import { Platform, Text, TouchableOpacity, View, StyleSheet } from "react-native";
+import { useLocale, useTypography } from "../../context/LocaleContext";
 import { colors } from "../../styles/colors";
 import { radius } from "../../styles/spacing";
 
@@ -21,12 +22,13 @@ function DownloadIcon({ color }) {
   );
 }
 
-function formatDate(dateStr) {
+function formatDate(dateStr, locale) {
   if (!dateStr) return "";
   const date = new Date(`${dateStr}T00:00:00`);
   if (Number.isNaN(date.getTime())) return dateStr;
 
-  return new Intl.DateTimeFormat("en-US", {
+  const loc = locale === "he" ? "he-IL" : "en-US";
+  return new Intl.DateTimeFormat(loc, {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -34,11 +36,18 @@ function formatDate(dateStr) {
 }
 
 export default function EventCard({ event, onPress, onDeletePress, onDownloadTxtPress, titleFontFamily }) {
-  const preview = event.preview || event.content || "No content yet for this story.";
+  const { locale, t } = useLocale();
+  const typography = useTypography();
+  const preview = event.preview || event.content || t("events.noPreview");
+
+  const uiSemi = typography.uiBold ? { fontFamily: typography.uiBold } : null;
+  const uiRegular = typography.uiRegular ? { fontFamily: typography.uiRegular } : null;
 
   const openStory = () => onPress(event);
   const requestRemove = () => onDeletePress?.(event);
   const requestDownloadTxt = () => onDownloadTxtPress?.(event);
+
+  const storyTitleForA11y = (event.title || "").trim();
 
   return (
     <View style={styles.card}>
@@ -50,7 +59,7 @@ export default function EventCard({ event, onPress, onDeletePress, onDownloadTxt
           accessibilityRole="button"
         >
           <View style={styles.header}>
-            <Text style={styles.date}>{formatDate(event.event_date)}</Text>
+            <Text style={[styles.date, uiRegular]}>{formatDate(event.event_date, locale)}</Text>
             <Text
               style={[styles.title, titleFontFamily ? { fontFamily: titleFontFamily } : null]}
               numberOfLines={2}
@@ -67,9 +76,9 @@ export default function EventCard({ event, onPress, onDeletePress, onDownloadTxt
               onPress={requestDownloadTxt}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               accessibilityRole="button"
-              accessibilityLabel="Download TXT"
+              accessibilityLabel={t("events.downloadA11y")}
             >
-              <View {...(Platform.OS === "web" ? { title: "Download TXT" } : {})}>
+              <View {...(Platform.OS === "web" ? { title: t("events.downloadA11y") } : {})}>
                 <DownloadIcon color={colors.diary.inkLight} />
               </View>
             </TouchableOpacity>
@@ -80,9 +89,9 @@ export default function EventCard({ event, onPress, onDeletePress, onDownloadTxt
               onPress={requestRemove}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               accessibilityRole="button"
-              accessibilityLabel="Remove story"
+              accessibilityLabel={t("events.removeA11y")}
             >
-              <Text style={styles.headerActionText}>Remove</Text>
+              <Text style={[styles.headerActionText, uiSemi]}>{t("events.remove")}</Text>
             </TouchableOpacity>
           ) : null}
         </View>
@@ -93,9 +102,13 @@ export default function EventCard({ event, onPress, onDeletePress, onDownloadTxt
         onPress={openStory}
         activeOpacity={0.82}
         accessibilityRole="button"
-        accessibilityLabel={`Open ${event.title || "story"}`}
+        accessibilityLabel={
+          storyTitleForA11y
+            ? t("events.openStoryA11y", { title: storyTitleForA11y })
+            : t("events.openStoryFallbackA11y")
+        }
       >
-        <Text style={styles.preview} numberOfLines={3}>
+        <Text style={[styles.preview, uiRegular]} numberOfLines={3}>
           {preview}
         </Text>
 
@@ -103,7 +116,7 @@ export default function EventCard({ event, onPress, onDeletePress, onDownloadTxt
           <View style={styles.tags}>
             {event.tags.map((tag) => (
               <View key={tag.id} style={[styles.tag, tag.color ? { borderColor: tag.color } : null]}>
-                <Text style={styles.tagText}>{tag.name}</Text>
+                <Text style={[styles.tagText, uiSemi]}>{tag.name}</Text>
               </View>
             ))}
           </View>
@@ -153,7 +166,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexShrink: 0,
     gap: 12,
-    marginLeft: 8,
+    marginStart: 8,
   },
   downloadIconButton: {
     alignItems: "center",
@@ -170,28 +183,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     textAlign: "right",
-    writingDirection: "ltr",
   },
   date: {
     color: colors.diary.inkLight,
     fontSize: 12,
     marginBottom: 4,
-    textAlign: "left",
-    writingDirection: "ltr",
   },
   title: {
     color: colors.diary.ink,
     fontSize: 22,
     lineHeight: 27,
-    textAlign: "left",
-    writingDirection: "auto",
   },
   preview: {
     color: colors.diary.inkMid,
     fontSize: 14,
     lineHeight: 20,
-    textAlign: "left",
-    writingDirection: "auto",
   },
   tags: {
     flexDirection: "row",
@@ -211,8 +217,6 @@ const styles = StyleSheet.create({
     color: colors.diary.tagText,
     fontSize: 11,
     fontWeight: "700",
-    textAlign: "left",
-    writingDirection: "auto",
   },
 });
 

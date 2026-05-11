@@ -12,8 +12,8 @@ import {
   View,
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { useFonts, Caveat_400Regular, Caveat_700Bold } from "@expo-google-fonts/caveat";
 import EventCard from "../components/events/EventCard";
+import { useLocale, useTypography } from "../context/LocaleContext";
 import { useEvents } from "../hooks/useEvents";
 import { exportStoryAsTxt } from "../services/storyTxtExport";
 import { colors } from "../styles/colors";
@@ -22,10 +22,12 @@ import { radius } from "../styles/spacing";
 export default function EventsPage() {
   const navigation = useNavigation();
   const { events, loading, error, fetchAll, deleteEventById } = useEvents();
-  const [fontsLoaded] = useFonts({ Caveat_400Regular, Caveat_700Bold });
+  const { locale, t } = useLocale();
+  const typography = useTypography();
 
-  const handwritingFont = fontsLoaded ? "Caveat_400Regular" : undefined;
-  const handwritingBold = fontsLoaded ? "Caveat_700Bold" : undefined;
+  const handwritingBold = typography.journalBold;
+  const uiBold = typography.uiBold ? { fontFamily: typography.uiBold } : null;
+  const uiRegular = typography.uiRegular ? { fontFamily: typography.uiRegular } : null;
 
   useFocusEffect(
     useCallback(() => {
@@ -41,54 +43,46 @@ export default function EventsPage() {
     navigation.navigate("WritingPage");
   };
 
-  const openCalendarJournal = () => {
-    navigation.navigate("CalendarJournalPage");
-  };
-
   const downloadStoryTxt = async (event) => {
     try {
       await exportStoryAsTxt(event);
     } catch (e) {
-      const message =
-        e?.message || "Something went wrong while exporting your story. Please try again.";
+      const message = e?.message || t("events.exportFailGeneric");
       if (Platform.OS === "web") {
-        window.alert?.(`Could not export\n\n${message}`);
+        window.alert?.(`${t("events.exportFailTitle")}\n\n${message}`);
         return;
       }
-      Alert.alert("Could not export", message);
+      Alert.alert(t("events.exportFailTitle"), message);
     }
   };
 
   const confirmRemoveStory = (event) => {
-    const rawTitle = event.title?.trim() || "this story";
+    const rawTitle = event.title?.trim() || t("events.thisStory");
     const titlePreview = rawTitle.length > 72 ? `${rawTitle.slice(0, 69)}…` : rawTitle;
-    const body = `"${titlePreview}" will be permanently deleted from your journal. This cannot be undone.`;
+    const body = t("events.removeBody", { title: titlePreview });
 
     const runDelete = async () => {
       try {
         await deleteEventById(Number(event.id));
-        // No success dialog—the list refreshes and the card disappears as feedback.
       } catch (e) {
-        const message =
-          e?.message || "Something went wrong while deleting your story. Please try again.";
+        const message = e?.message || t("events.deleteFailGeneric");
         if (Platform.OS === "web") {
-          window.alert?.(`Could not delete\n\n${message}`);
+          window.alert?.(`${t("events.deleteFailTitle")}\n\n${message}`);
           return;
         }
-        Alert.alert("Could not delete", message);
+        Alert.alert(t("events.deleteFailTitle"), message);
       }
     };
 
-    // react-native-web often does not run Android-style Alert button callbacks reliably.
     if (Platform.OS === "web" && typeof window !== "undefined" && typeof window.confirm === "function") {
-      if (window.confirm(`Remove story?\n\n${body}`)) void runDelete();
+      if (window.confirm(`${t("events.removeConfirmWeb")}\n\n${body}`)) void runDelete();
       return;
     }
 
-    Alert.alert("Remove story?", body, [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("events.removeTitle"), body, [
+      { text: t("events.cancel"), style: "cancel" },
       {
-        text: "Remove",
+        text: t("events.remove"),
         style: "destructive",
         onPress: () => void runDelete(),
       },
@@ -98,7 +92,7 @@ export default function EventsPage() {
   const renderHeader = () => (
     <View style={styles.header}>
       <Text style={[styles.title, handwritingBold ? { fontFamily: handwritingBold } : null]}>
-        My Stories
+        {t("events.title")}
       </Text>
     </View>
   );
@@ -115,10 +109,10 @@ export default function EventsPage() {
     if (error) {
       return (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>Could not load stories</Text>
-          <Text style={styles.emptyText}>{error}</Text>
+          <Text style={[styles.emptyTitle, uiBold]}>{t("events.loadErrorTitle")}</Text>
+          <Text style={[styles.emptyText, uiRegular]}>{error}</Text>
           <TouchableOpacity style={styles.secondaryButton} onPress={fetchAll}>
-            <Text style={styles.secondaryButtonText}>Try again</Text>
+            <Text style={[styles.secondaryButtonText, uiBold]}>{t("common.tryAgain")}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -127,16 +121,11 @@ export default function EventsPage() {
     return (
       <View style={styles.emptyCard}>
         <Text style={[styles.emptyTitle, handwritingBold ? { fontFamily: handwritingBold } : null]}>
-          No saved stories yet
+          {t("events.emptyTitle")}
         </Text>
-        <Text style={styles.emptyText}>
-          After you save a journal event, it will appear here as a card for reading or editing.
-        </Text>
+        <Text style={[styles.emptyText, uiRegular]}>{t("events.emptyBody")}</Text>
         <TouchableOpacity style={styles.primaryButton} onPress={writeNewEvent}>
-          <Text style={styles.primaryButtonText}>Write your first story</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.secondaryButton} onPress={openCalendarJournal}>
-          <Text style={styles.secondaryButtonText}>Choose a date instead</Text>
+          <Text style={[styles.primaryButtonText, uiBold]}>{t("events.writeFirst")}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -147,12 +136,21 @@ export default function EventsPage() {
       <StatusBar barStyle="dark-content" backgroundColor={colors.diary.canvas} />
 
       <View style={styles.topBar}>
-        <View style={styles.topTitle} />
+        <View style={styles.topBarCenter} />
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={writeNewEvent}
+          accessibilityRole="button"
+          accessibilityLabel={t("events.addStoryA11y")}
+        >
+          <Text style={[styles.addButtonText, uiBold]}>{t("events.addStoryGlyph")}</Text>
+        </TouchableOpacity>
       </View>
 
       <FlatList
         data={events}
         keyExtractor={(item) => String(item.id)}
+        extraData={locale}
         renderItem={({ item }) => (
           <EventCard
             event={item}
@@ -191,9 +189,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: Platform.OS === "ios" ? 46 : 28,
   },
-  topTitle: {
-    alignItems: "center",
+  topBarCenter: {
     flex: 1,
+  },
+  addButton: {
+    alignItems: "center",
+    borderColor: colors.diary.divider,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    height: 40,
+    justifyContent: "center",
+    width: 40,
+  },
+  addButtonText: {
+    color: colors.diary.ink,
+    fontSize: 22,
+    fontWeight: "700",
+    lineHeight: 26,
+    marginTop: -2,
   },
   listContent: {
     paddingBottom: 36,
@@ -208,8 +221,6 @@ const styles = StyleSheet.create({
     color: colors.diary.ink,
     fontSize: 32,
     lineHeight: 38,
-    textAlign: "left",
-    writingDirection: "ltr",
   },
   centerState: {
     alignItems: "center",
@@ -232,16 +243,12 @@ const styles = StyleSheet.create({
     color: colors.diary.ink,
     fontSize: 22,
     marginBottom: 8,
-    textAlign: "left",
-    writingDirection: "ltr",
   },
   emptyText: {
     color: colors.diary.inkMid,
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 14,
-    textAlign: "left",
-    writingDirection: "ltr",
   },
   primaryButton: {
     backgroundColor: colors.diary.ink,

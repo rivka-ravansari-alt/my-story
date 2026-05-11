@@ -4,8 +4,10 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { AuthProvider, useAuth } from "./src/context/AuthContext";
+import { LocaleProvider } from "./src/context/LocaleContext";
 import AppShell from "./src/components/navigation/AppShell";
 import SettingsNavigator from "./src/navigation/SettingsNavigator";
+import CalendarJournalPage from "./src/pages/CalendarJournalPage";
 import LoginPage from "./src/pages/LoginPage";
 import WritingPage from "./src/pages/WritingPage";
 import EventsPage from "./src/pages/EventsPage";
@@ -25,7 +27,7 @@ function withAppShell(Component) {
   };
 }
 
-const CalendarJournalScreen = withAppShell(WritingPage);
+const CalendarJournalScreen = withAppShell(CalendarJournalPage);
 const WritingScreen = withAppShell(WritingPage);
 const EventsScreen = withAppShell(EventsPage);
 const SettingsScreen = withAppShell(SettingsNavigator);
@@ -49,11 +51,7 @@ function AppNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="CalendarJournalPage" screenOptions={{ headerShown: false }}>
-        <Stack.Screen
-          name="CalendarJournalPage"
-          component={CalendarJournalScreen}
-          initialParams={{ showCalendar: true }}
-        />
+        <Stack.Screen name="CalendarJournalPage" component={CalendarJournalScreen} />
         <Stack.Screen name="WritingPage" component={WritingScreen} />
         <Stack.Screen name="EventsPage" component={EventsScreen} />
         <Stack.Screen name="ExercisesPage" component={ExercisesScreen} />
@@ -65,11 +63,13 @@ function AppNavigator() {
 
 export default function App() {
   return (
-    <GoogleOAuthProvider clientId={googleAuthConfig.clientId}>
-      <AuthProvider>
-        <AppNavigator />
-      </AuthProvider>
-    </GoogleOAuthProvider>
+    <LocaleProvider>
+      <GoogleOAuthProvider clientId={googleAuthConfig.clientId}>
+        <AuthProvider>
+          <AppNavigator />
+        </AuthProvider>
+      </GoogleOAuthProvider>
+    </LocaleProvider>
   );
 }
 

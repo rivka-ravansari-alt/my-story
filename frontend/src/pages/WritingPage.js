@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,10 +10,9 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   StatusBar,
-  useWindowDimensions,
 } from "react-native";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
-import { useFonts, Caveat_400Regular, Caveat_700Bold } from "@expo-google-fonts/caveat";
+import { useLocale, useTypography } from "../context/LocaleContext";
 import { useEvents } from "../hooks/useEvents";
 import { useTags } from "../hooks/useTags";
 import { eventService } from "../services/eventService";
@@ -21,7 +20,6 @@ import JournalPage from "../components/diary/JournalPage";
 import DiaryDateBanner from "../components/diary/DiaryDateBanner";
 import DiaryTitleField from "../components/diary/DiaryTitleField";
 import DiaryBodyField from "../components/diary/DiaryBodyField";
-import CalendarSidePanel from "../components/diary/CalendarSidePanel";
 import SaveTagsModal from "../components/diary/SaveTagsModal";
 import { colors } from "../styles/colors";
 
@@ -35,10 +33,9 @@ function getLocalDateKey(dateValue = new Date()) {
 export default function WritingPage() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { eventId, date, showCalendar } = route.params || {};
-  const { width } = useWindowDimensions();
-
-  const [fontsLoaded] = useFonts({ Caveat_400Regular, Caveat_700Bold });
+  const { eventId, date } = route.params || {};
+  const { locale, t, isRTL } = useLocale();
+  const typography = useTypography();
 
   const today = getLocalDateKey();
   const initialDate = date || today;
@@ -58,8 +55,9 @@ export default function WritingPage() {
   const [tagModalVisible, setTagModalVisible] = useState(false);
 
   const isEditing = Boolean(eventId);
-  const showCalendarPanel = Boolean(showCalendar) && !isEditing;
-  const isWideLayout = width >= 860;
+
+  const uiBoldStyle = typography.uiBold ? { fontFamily: typography.uiBold } : null;
+  const uiRegularStyle = typography.uiRegular ? { fontFamily: typography.uiRegular } : null;
 
   const loadEvent = useCallback(async () => {
     if (!eventId) return;
@@ -71,11 +69,11 @@ export default function WritingPage() {
       setEventDate(ev.event_date || initialDate);
       setSelectedTagIds((ev.tags || []).map((t) => t.id));
     } catch (e) {
-      Alert.alert("Error", "Could not load story: " + e.message);
+      Alert.alert(t("writing.errorTitle"), t("writing.loadFailed", { message: e.message }));
     } finally {
       setLoading(false);
     }
-  }, [eventId, initialDate]);
+  }, [eventId, initialDate, t]);
 
   useEffect(() => {
     loadEvent();
@@ -99,7 +97,7 @@ export default function WritingPage() {
 
   const validate = () => {
     const errs = {};
-    if (!title.trim()) errs.title = "Your story needs a title";
+    if (!title.trim()) errs.title = t("writing.titleRequired");
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -135,10 +133,7 @@ export default function WritingPage() {
       }
     } catch (e) {
       console.error("Failed to save event", e.details || e);
-      Alert.alert(
-        "Could not save story",
-        "Please check that the server is running and try again."
-      );
+      Alert.alert(t("writing.saveFailedTitle"), t("writing.saveFailedBody"));
     } finally {
       setSaving(false);
     }
@@ -157,11 +152,6 @@ export default function WritingPage() {
     setTagModalVisible(false);
   };
 
-  const selectCalendarDate = (dateKey) => {
-    setEventDate(dateKey);
-    setShowSavedActions(false);
-  };
-
   const finishWriting = () => {
     if (navigation.canGoBack()) {
       navigation.goBack();
@@ -170,8 +160,11 @@ export default function WritingPage() {
     }
   };
 
-  const handwritingFont = fontsLoaded ? "Caveat_400Regular" : undefined;
-  const handwritingBold = fontsLoaded ? "Caveat_700Bold" : undefined;
+  const handwritingFont = typography.journalRegular;
+  const handwritingBold = typography.journalBold;
+  const titleItalic = locale !== "he";
+
+  const backGlyph = navigation.canGoBack() ? (isRTL ? "\u2192" : "\u2190") : null;
 
   if (loading) {
     return (
@@ -188,26 +181,26 @@ export default function WritingPage() {
     >
       <StatusBar barStyle="dark-content" backgroundColor={colors.diary.canvas} />
 
-      {/* Top bar */}
       <View style={styles.topBar}>
-        {showCalendarPanel ? (
-          <View style={styles.topAction} />
-        ) : (
-          <TouchableOpacity
-            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate("EventsPage"))}
-            style={styles.topAction}
-          >
-            <Text style={styles.topActionIcon}>{navigation.canGoBack() ? "←" : "Stories"}</Text>
-          </TouchableOpacity>
-        )}
-
-        {showCalendarPanel ? (
-          <View style={styles.topTitle} />
-        ) : (
-          <Text style={[styles.topTitle, handwritingFont ? { fontFamily: handwritingFont } : null]}>
-            {isEditing ? "Edit memory" : "New entry"}
+        <TouchableOpacity
+          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate("EventsPage"))}
+          style={styles.topAction}
+        >
+          <Text style={[styles.topActionIcon, uiBoldStyle]}>
+            {navigation.canGoBack() ? backGlyph : t("writing.backToStories")}
           </Text>
-        )}
+        </TouchableOpacity>
+
+        <Text
+          style={[
+            styles.topTitle,
+            handwritingFont ? { fontFamily: handwritingFont } : null,
+            uiRegularStyle,
+            locale === "he" ? styles.topTitleHe : null,
+          ]}
+        >
+          {isEditing ? t("writing.editTitle") : t("writing.newTitle")}
+        </Text>
 
         <TouchableOpacity
           onPress={openSaveTagsModal}
@@ -228,38 +221,29 @@ export default function WritingPage() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.journalLayout, showCalendarPanel && isWideLayout && styles.journalLayoutWide]}>
-          {showCalendarPanel ? (
-            <View style={[styles.calendarPanelWrap, !isWideLayout && styles.calendarPanelWrapNarrow]}>
-              <CalendarSidePanel
-                selectedDate={eventDate}
-                onSelectDate={selectCalendarDate}
-                titleFontFamily={handwritingBold}
-              />
-            </View>
-          ) : null}
-
+        <View style={styles.journalLayout}>
           <View style={styles.journalColumn}>
             {showSavedActions ? (
               <View style={styles.savedCard}>
-                <Text style={[styles.savedTitle, handwritingFont ? { fontFamily: handwritingFont } : null]}>
-                  Saved to your journal
+                <Text
+                  style={[styles.savedTitle, handwritingFont ? { fontFamily: handwritingFont } : null, uiRegularStyle]}
+                >
+                  {t("writing.savedBannerTitle")}
                 </Text>
-                <Text style={styles.savedText}>
-                  "{savedEntryTitle}" is saved. You can write another event for this same day.
+                <Text style={[styles.savedText, uiRegularStyle]}>
+                  {t("writing.savedBannerBody", { title: savedEntryTitle })}
                 </Text>
                 <View style={styles.savedActions}>
                   <TouchableOpacity style={styles.writeAnotherBtn} onPress={startNewEvent}>
-                    <Text style={styles.writeAnotherText}>Write another event</Text>
+                    <Text style={[styles.writeAnotherText, uiBoldStyle]}>{t("writing.writeAnother")}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.doneBtn} onPress={finishWriting}>
-                    <Text style={styles.doneText}>Done for now</Text>
+                    <Text style={[styles.doneText, uiBoldStyle]}>{t("writing.doneForNow")}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             ) : null}
 
-            {/* The physical journal page */}
             <JournalPage>
               <DiaryDateBanner dateStr={eventDate} />
 
@@ -267,17 +251,20 @@ export default function WritingPage() {
                 value={title}
                 onChangeText={setTitle}
                 error={errors.title}
+                errorTextStyle={uiRegularStyle}
                 fontFamily={handwritingBold}
+                italic={titleItalic}
+                placeholder={t("diary.titlePlaceholder")}
               />
 
               <DiaryBodyField
                 value={content}
                 onChangeText={setContent}
                 fontFamily={handwritingFont}
+                placeholder={t("diary.bodyPlaceholder")}
               />
             </JournalPage>
 
-            {/* Bottom save prompt */}
             <View style={styles.bottomRow}>
               <TouchableOpacity
                 style={[styles.sealBtn, saving && styles.sealBtnDisabled]}
@@ -286,7 +273,7 @@ export default function WritingPage() {
                 activeOpacity={0.8}
               >
                 <Text style={[styles.sealBtnText, handwritingFont ? { fontFamily: handwritingFont } : null]}>
-                  {saving ? "Saving…" : isEditing ? "Save changes" : "Seal this memory"}
+                  {saving ? t("writing.sealSaving") : isEditing ? t("writing.sealEdit") : t("writing.sealNew")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -342,6 +329,10 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     letterSpacing: 0.3,
   },
+  topTitleHe: {
+    fontStyle: "normal",
+    letterSpacing: 0.15,
+  },
   saveAction: {
     backgroundColor: colors.diary.accent,
     borderRadius: 99,
@@ -372,20 +363,6 @@ const styles = StyleSheet.create({
   },
   journalLayout: {
     alignItems: "center",
-  },
-  journalLayoutWide: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: 16,
-    justifyContent: "center",
-    paddingHorizontal: 14,
-  },
-  calendarPanelWrap: {
-    alignItems: "center",
-    paddingTop: 6,
-  },
-  calendarPanelWrapNarrow: {
-    marginBottom: 12,
   },
   journalColumn: {
     flex: 1,

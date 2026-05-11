@@ -12,19 +12,28 @@ import {
   View,
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { useFonts, Caveat_700Bold } from "@expo-google-fonts/caveat";
+import AddExerciseTemplateModal from "../components/exercises/AddExerciseTemplateModal";
 import ExerciseTemplateCard from "../components/exercises/ExerciseTemplateCard";
-import ExerciseTemplateForm from "../components/exercises/ExerciseTemplateForm";
+import { useLocale, useTypography } from "../context/LocaleContext";
 import { useExerciseTemplates } from "../hooks/useExerciseTemplates";
 import { colors } from "../styles/colors";
 import { radius } from "../styles/spacing";
 
 export default function ExerciseTemplatesPage() {
   const navigation = useNavigation();
-  const { templates, loading, error, fetchAll, createTemplate, deleteTemplateById } = useExerciseTemplates();
-  const [fontsLoaded] = useFonts({ Caveat_700Bold });
+  const { templates, loading, error, fetchAll, createTemplate, deleteTemplateById } =
+    useExerciseTemplates();
+  const { locale, t, isRTL } = useLocale();
+  const typography = useTypography();
   const [saving, setSaving] = useState(false);
-  const handwritingBold = fontsLoaded ? "Caveat_700Bold" : undefined;
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [formKey, setFormKey] = useState(0);
+
+  const handwritingBold = typography.journalBold;
+  const uiBold = typography.uiBold ? { fontFamily: typography.uiBold } : null;
+  const uiRegular = typography.uiRegular ? { fontFamily: typography.uiRegular } : null;
+
+  const backGlyph = isRTL ? "\u203a" : "\u2039";
 
   useFocusEffect(
     useCallback(() => {
@@ -42,13 +51,13 @@ export default function ExerciseTemplatesPage() {
 
   const handleCreate = async (payload) => {
     if (!payload.name) {
-      showError("Template name required", "Please enter a name for this template.");
+      showError(t("templatesPage.nameRequiredTitle"), t("templatesPage.nameRequiredBody"));
       return false;
     }
 
     const cleanedFields = payload.fields.filter((field) => field.label);
     if (cleanedFields.length === 0) {
-      showError("Question required", "Add at least one question or field.");
+      showError(t("templatesPage.questionRequiredTitle"), t("templatesPage.questionRequiredBody"));
       return false;
     }
 
@@ -57,11 +66,22 @@ export default function ExerciseTemplatesPage() {
       await createTemplate({ ...payload, fields: cleanedFields });
       return true;
     } catch (e) {
-      showError("Could not add template", e.message);
+      showError(t("templatesPage.addFailTitle"), e.message);
       return false;
     } finally {
       setSaving(false);
     }
+  };
+
+  const openAddTemplateModal = () => {
+    setFormKey((k) => k + 1);
+    setAddModalVisible(true);
+  };
+
+  const handleCreateFromModal = async (payload) => {
+    const ok = await handleCreate(payload);
+    if (ok) setAddModalVisible(false);
+    return ok;
   };
 
   const confirmDelete = (template) => {
@@ -70,22 +90,22 @@ export default function ExerciseTemplatesPage() {
       try {
         await deleteTemplateById(template.id);
       } catch (e) {
-        showError("Could not delete template", e.message);
+        showError(t("templatesPage.deleteFailTitle"), e.message);
       } finally {
         setSaving(false);
       }
     };
 
-    const message = `"${template.name}" will be removed. Existing exercises keep their saved answers.`;
+    const message = t("templatesPage.deleteBody", { name: template.name });
 
     if (Platform.OS === "web" && typeof window !== "undefined" && typeof window.confirm === "function") {
-      if (window.confirm(`Delete template?\n\n${message}`)) void runDelete();
+      if (window.confirm(`${t("templatesPage.deleteConfirmWeb")}\n\n${message}`)) void runDelete();
       return;
     }
 
-    Alert.alert("Delete template?", message, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => void runDelete() },
+    Alert.alert(t("templatesPage.deleteTitle"), message, [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.delete"), style: "destructive", onPress: () => void runDelete() },
     ]);
   };
 
@@ -101,10 +121,10 @@ export default function ExerciseTemplatesPage() {
     if (error) {
       return (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>Could not load templates</Text>
-          <Text style={styles.emptyText}>{error}</Text>
+          <Text style={[styles.emptyTitle, uiBold]}>{t("templatesPage.loadErrorTitle")}</Text>
+          <Text style={[styles.emptyText, uiRegular]}>{error}</Text>
           <TouchableOpacity style={styles.secondaryButton} onPress={fetchAll}>
-            <Text style={styles.secondaryButtonText}>Try again</Text>
+            <Text style={[styles.secondaryButtonText, uiBold]}>{t("common.tryAgain")}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -113,11 +133,9 @@ export default function ExerciseTemplatesPage() {
     return (
       <View style={styles.emptyCard}>
         <Text style={[styles.emptyTitle, handwritingBold ? { fontFamily: handwritingBold } : null]}>
-          No templates yet
+          {t("templatesPage.emptyTitle")}
         </Text>
-        <Text style={styles.emptyText}>
-          Create reusable question structures for check-ins, thought records, reflections, or therapy homework.
-        </Text>
+        <Text style={[styles.emptyText, uiRegular]}>{t("templatesPage.emptyBody")}</Text>
       </View>
     );
   };
@@ -133,17 +151,23 @@ export default function ExerciseTemplatesPage() {
           }
           style={styles.topAction}
         >
-          <Text style={styles.topActionText}>{"<"}</Text>
+          <Text style={[styles.topActionText, uiBold]}>{backGlyph}</Text>
         </TouchableOpacity>
-        <Text style={[styles.topTitle, handwritingBold ? { fontFamily: handwritingBold } : null]}>
-          Exercise templates
-        </Text>
-        <View style={styles.topAction} />
+        <View style={styles.topBarCenter} />
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={openAddTemplateModal}
+          accessibilityRole="button"
+          accessibilityLabel={t("templatesPage.addTemplateA11y")}
+        >
+          <Text style={[styles.addButtonText, uiBold]}>{t("templatesPage.addTemplateGlyph")}</Text>
+        </TouchableOpacity>
       </View>
 
       <FlatList
         data={templates}
         keyExtractor={(item) => String(item.id)}
+        extraData={locale}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
@@ -153,18 +177,27 @@ export default function ExerciseTemplatesPage() {
           />
         }
         ListHeaderComponent={
-          <>
-            <View style={styles.header}>
-              <Text style={styles.subtitle}>
-                Build reusable question sets for therapy and self-development exercises.
-              </Text>
-            </View>
-            <ExerciseTemplateForm onSubmit={handleCreate} saving={saving} />
-          </>
+          <View style={styles.header}>
+            <Text style={[styles.listTitle, handwritingBold ? { fontFamily: handwritingBold } : null]}>
+              {t("templatesPage.listTitle")}
+            </Text>
+          </View>
         }
         ListEmptyComponent={renderEmpty}
-        renderItem={({ item }) => <ExerciseTemplateCard template={item} onDelete={() => confirmDelete(item)} />}
+        renderItem={({ item }) => (
+          <ExerciseTemplateCard template={item} onDelete={() => confirmDelete(item)} />
+        )}
         showsVerticalScrollIndicator={false}
+      />
+
+      <AddExerciseTemplateModal
+        key={formKey}
+        visible={addModalVisible}
+        onClose={() => {
+          if (!saving) setAddModalVisible(false);
+        }}
+        onSubmit={handleCreateFromModal}
+        saving={saving}
       />
     </View>
   );
@@ -189,16 +222,28 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 40,
   },
+  addButton: {
+    alignItems: "center",
+    borderColor: colors.diary.divider,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    height: 40,
+    justifyContent: "center",
+    width: 40,
+  },
+  addButtonText: {
+    color: colors.diary.ink,
+    fontSize: 22,
+    fontWeight: "700",
+    lineHeight: 26,
+    marginTop: -2,
+  },
+  topBarCenter: {
+    flex: 1,
+  },
   topActionText: {
     color: colors.diary.inkMid,
     fontSize: 20,
-  },
-  topTitle: {
-    color: colors.diary.ink,
-    flex: 1,
-    fontSize: 28,
-    lineHeight: 34,
-    textAlign: "center",
   },
   listContent: {
     paddingBottom: 36,
@@ -208,15 +253,12 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "flex-start",
     marginBottom: 14,
-    paddingTop: 2,
+    paddingTop: 6,
   },
-  subtitle: {
-    color: colors.diary.inkMid,
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 0,
-    textAlign: "left",
-    writingDirection: "ltr",
+  listTitle: {
+    color: colors.diary.ink,
+    fontSize: 32,
+    lineHeight: 38,
   },
   centerState: {
     alignItems: "center",
@@ -234,16 +276,12 @@ const styles = StyleSheet.create({
     color: colors.diary.ink,
     fontSize: 22,
     marginBottom: 8,
-    textAlign: "left",
-    writingDirection: "ltr",
   },
   emptyText: {
     color: colors.diary.inkMid,
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 12,
-    textAlign: "left",
-    writingDirection: "ltr",
   },
   secondaryButton: {
     borderColor: colors.diary.divider,

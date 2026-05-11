@@ -13,8 +13,8 @@ import {
   View,
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { useFonts, Caveat_700Bold } from "@expo-google-fonts/caveat";
 import TagListItem from "../components/tags/TagListItem";
+import { useLocale, useTypography } from "../context/LocaleContext";
 import { useTags } from "../hooks/useTags";
 import { colors } from "../styles/colors";
 import { radius } from "../styles/spacing";
@@ -24,14 +24,22 @@ const DEFAULT_TAG_COLOR = "#B8780A";
 export default function TagsPage() {
   const navigation = useNavigation();
   const { tags, loading, error, fetchAll, createTag, updateTag, deleteTagById } = useTags();
-  const [fontsLoaded] = useFonts({ Caveat_700Bold });
+  const { locale, t, isRTL } = useLocale();
+  const typography = useTypography();
 
   const [newTagName, setNewTagName] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [draftName, setDraftName] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const handwritingBold = fontsLoaded ? "Caveat_700Bold" : undefined;
+  const handwritingBold = typography.journalBold;
+  const uiBold = typography.uiBold ? { fontFamily: typography.uiBold } : null;
+  const uiRegular = typography.uiRegular ? { fontFamily: typography.uiRegular } : null;
+
+  const backGlyph = isRTL ? "\u203a" : "\u2039";
+  const rtlFieldText = isRTL
+    ? { textAlign: "right", writingDirection: "rtl" }
+    : { textAlign: "left", writingDirection: "ltr" };
 
   useFocusEffect(
     useCallback(() => {
@@ -50,7 +58,7 @@ export default function TagsPage() {
   const handleCreate = async () => {
     const name = newTagName.trim();
     if (!name) {
-      showError("Tag name required", "Please enter a name for the new tag.");
+      showError(t("tagsPage.nameRequiredTitle"), t("tagsPage.nameRequiredBody"));
       return;
     }
 
@@ -59,7 +67,7 @@ export default function TagsPage() {
       await createTag(name, DEFAULT_TAG_COLOR);
       setNewTagName("");
     } catch (e) {
-      showError("Could not add tag", e.message);
+      showError(t("tagsPage.addFailTitle"), e.message);
     } finally {
       setSaving(false);
     }
@@ -78,7 +86,7 @@ export default function TagsPage() {
   const saveEdit = async (tag) => {
     const name = draftName.trim();
     if (!name) {
-      showError("Tag name required", "Tag names cannot be empty.");
+      showError(t("tagsPage.emptyNameTitle"), t("tagsPage.emptyNameBody"));
       return;
     }
 
@@ -87,7 +95,7 @@ export default function TagsPage() {
       await updateTag(tag.id, { name });
       cancelEdit();
     } catch (e) {
-      showError("Could not update tag", e.message);
+      showError(t("tagsPage.updateFailTitle"), e.message);
     } finally {
       setSaving(false);
     }
@@ -100,22 +108,22 @@ export default function TagsPage() {
         await deleteTagById(tag.id);
         if (editingId === tag.id) cancelEdit();
       } catch (e) {
-        showError("Could not delete tag", e.message);
+        showError(t("tagsPage.deleteFailTitle"), e.message);
       } finally {
         setSaving(false);
       }
     };
 
-    const message = `"${tag.name}" will be removed from your tag list and from any stories that use it.`;
+    const message = t("tagsPage.deleteBody", { name: tag.name });
 
     if (Platform.OS === "web" && typeof window !== "undefined" && typeof window.confirm === "function") {
-      if (window.confirm(`Delete tag?\n\n${message}`)) void runDelete();
+      if (window.confirm(`${t("tagsPage.deleteConfirmWeb")}\n\n${message}`)) void runDelete();
       return;
     }
 
-    Alert.alert("Delete tag?", message, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => void runDelete() },
+    Alert.alert(t("tagsPage.deleteTitle"), message, [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.delete"), style: "destructive", onPress: () => void runDelete() },
     ]);
   };
 
@@ -131,10 +139,10 @@ export default function TagsPage() {
     if (error) {
       return (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>Could not load tags</Text>
-          <Text style={styles.emptyText}>{error}</Text>
+          <Text style={[styles.emptyTitle, uiBold]}>{t("tagsPage.loadErrorTitle")}</Text>
+          <Text style={[styles.emptyText, uiRegular]}>{error}</Text>
           <TouchableOpacity style={styles.secondaryButton} onPress={fetchAll}>
-            <Text style={styles.secondaryButtonText}>Try again</Text>
+            <Text style={[styles.secondaryButtonText, uiBold]}>{t("common.tryAgain")}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -143,11 +151,9 @@ export default function TagsPage() {
     return (
       <View style={styles.emptyCard}>
         <Text style={[styles.emptyTitle, handwritingBold ? { fontFamily: handwritingBold } : null]}>
-          No tags yet
+          {t("tagsPage.emptyTitle")}
         </Text>
-        <Text style={styles.emptyText}>
-          Add tags like Family, Travel, Dreams, or School so you can mark each journal story.
-        </Text>
+        <Text style={[styles.emptyText, uiRegular]}>{t("tagsPage.emptyBody")}</Text>
       </View>
     );
   };
@@ -163,10 +169,10 @@ export default function TagsPage() {
           }
           style={styles.topAction}
         >
-          <Text style={styles.topActionText}>{"<"}</Text>
+          <Text style={[styles.topActionText, uiBold]}>{backGlyph}</Text>
         </TouchableOpacity>
         <Text style={[styles.topTitle, handwritingBold ? { fontFamily: handwritingBold } : null]}>
-          Tags
+          {t("tagsPage.title")}
         </Text>
         <View style={styles.topAction} />
       </View>
@@ -174,6 +180,7 @@ export default function TagsPage() {
       <FlatList
         data={tags}
         keyExtractor={(item) => String(item.id)}
+        extraData={locale}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
@@ -184,22 +191,22 @@ export default function TagsPage() {
         }
         ListHeaderComponent={
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Add a new tag</Text>
+            <Text style={[styles.sectionTitle, uiBold, rtlFieldText]}>{t("tagsPage.addSection")}</Text>
             <View style={styles.createRow}>
               <TextInput
                 value={newTagName}
                 onChangeText={setNewTagName}
                 onSubmitEditing={handleCreate}
-                placeholder="Tag name"
+                placeholder={t("tagsPage.placeholder")}
                 placeholderTextColor={colors.diary.inkLight}
-                style={styles.createInput}
+                style={[styles.createInput, uiRegular, rtlFieldText]}
               />
               <TouchableOpacity
                 style={[styles.addButton, saving && styles.disabled]}
                 onPress={handleCreate}
                 disabled={saving}
               >
-                <Text style={styles.addButtonText}>Add</Text>
+                <Text style={[styles.addButtonText, uiBold]}>{t("tagsPage.add")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -255,7 +262,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     lineHeight: 34,
     textAlign: "center",
-    writingDirection: "ltr",
   },
   listContent: {
     paddingBottom: 36,
@@ -280,8 +286,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
     marginBottom: 10,
-    textAlign: "left",
-    writingDirection: "ltr",
   },
   createRow: {
     alignItems: "center",
@@ -298,8 +302,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     paddingHorizontal: 11,
     paddingVertical: 9,
-    textAlign: "left",
-    writingDirection: "auto",
   },
   addButton: {
     backgroundColor: colors.diary.ink,
@@ -331,16 +333,12 @@ const styles = StyleSheet.create({
     color: colors.diary.ink,
     fontSize: 22,
     marginBottom: 8,
-    textAlign: "left",
-    writingDirection: "ltr",
   },
   emptyText: {
     color: colors.diary.inkMid,
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 12,
-    textAlign: "left",
-    writingDirection: "ltr",
   },
   secondaryButton: {
     borderColor: colors.diary.divider,

@@ -33,9 +33,9 @@ const styles = StyleSheet.create({
   },
   marginLine: {
     width: 2,
-    backgroundColor: colors.diary.marginLine,
-    marginLeft: 42,
     alignSelf: "stretch",
+    backgroundColor: colors.diary.marginLine,
+    marginStart: 42,
   },
   content: {
     flex: 1,

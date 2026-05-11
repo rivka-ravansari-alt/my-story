@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Modal,
@@ -10,41 +10,44 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { useFonts, Caveat_700Bold } from "@expo-google-fonts/caveat";
 import { useAuth } from "../../context/AuthContext";
+import { useLocale, useTypography } from "../../context/LocaleContext";
 import { colors } from "../../styles/colors";
 import { radius } from "../../styles/spacing";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 const SIDEBAR_WIDTH = 244;
 const COLLAPSED_WIDTH = 76;
 const MOBILE_BREAKPOINT = 720;
 
-const NAV_ITEMS = [
-  {
-    label: "Calendar",
-    routeName: "CalendarJournalPage",
-    icon: "calendar",
-    matchRoutes: ["CalendarJournalPage"],
-  },
-  {
-    label: "Stories",
-    routeName: "EventsPage",
-    icon: "stories",
-    matchRoutes: ["EventsPage", "WritingPage"],
-  },
-  {
-    label: "Exercises",
-    routeName: "ExercisesPage",
-    icon: "exercises",
-    matchRoutes: ["ExercisesPage"],
-  },
-  {
-    label: "Settings",
-    routeName: "SettingsPage",
-    icon: "settings",
-    matchRoutes: ["SettingsPage"],
-  },
-];
+function buildNavItems(t) {
+  return [
+    {
+      labelKey: "nav.calendar",
+      routeName: "CalendarJournalPage",
+      icon: "calendar",
+      matchRoutes: ["CalendarJournalPage"],
+    },
+    {
+      labelKey: "nav.stories",
+      routeName: "EventsPage",
+      icon: "stories",
+      matchRoutes: ["EventsPage", "WritingPage"],
+    },
+    {
+      labelKey: "nav.exercises",
+      routeName: "ExercisesPage",
+      icon: "exercises",
+      matchRoutes: ["ExercisesPage"],
+    },
+    {
+      labelKey: "nav.settings",
+      routeName: "SettingsPage",
+      icon: "settings",
+      matchRoutes: ["SettingsPage"],
+    },
+  ].map((item) => ({ ...item, label: t(item.labelKey) }));
+}
 
 function NavigationIcon({ active, type }) {
   if (type === "journal") {
@@ -119,12 +122,20 @@ function NavigationIcon({ active, type }) {
 function SidebarContent({
   activeRouteName,
   collapsed,
+  navItems,
   onCloseDrawer,
   onNavigate,
   onLogout,
   onToggleCollapsed,
   showCollapseControl,
   titleFontFamily,
+  subtitleStyle,
+  navLabelStyle,
+  utilityTitleStyle,
+  mobileCloseTextStyle,
+  collapseCollapsedGlyph,
+  collapseExpandedGlyph,
+  t,
 }) {
   const showLabels = !collapsed;
 
@@ -137,15 +148,15 @@ function SidebarContent({
         {showLabels ? (
           <View style={styles.brandTextWrap}>
             <Text style={[styles.brandTitle, titleFontFamily ? { fontFamily: titleFontFamily } : null]}>
-              My Story
+              {t("brand.title")}
             </Text>
-            <Text style={styles.brandSubtitle}>Memory journal</Text>
+            <Text style={[styles.brandSubtitle, subtitleStyle]}>{t("brand.subtitle")}</Text>
           </View>
         ) : null}
       </View>
 
       <View style={styles.navList}>
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const active = item.matchRoutes.includes(activeRouteName);
           return (
             <TouchableOpacity
@@ -162,7 +173,7 @@ function SidebarContent({
                 <NavigationIcon active={active} type={item.icon} />
               </View>
               {showLabels ? (
-                <Text style={[styles.navLabel, active && styles.navLabelActive]}>
+                <Text style={[styles.navLabel, navLabelStyle, active && styles.navLabelActive]}>
                   {item.label}
                 </Text>
               ) : null}
@@ -180,7 +191,9 @@ function SidebarContent({
           <View style={styles.utilityBadge}>
             <Text style={styles.utilityBadgeText}>×</Text>
           </View>
-          {showLabels ? <Text style={styles.utilityTitle}>Sign out</Text> : null}
+          {showLabels ? (
+            <Text style={[styles.utilityTitle, utilityTitleStyle]}>{t("nav.signOut")}</Text>
+          ) : null}
         </TouchableOpacity>
 
         {showCollapseControl ? (
@@ -190,17 +203,19 @@ function SidebarContent({
             style={[styles.utilityButton, collapsed && styles.utilityButtonCollapsed]}
           >
             <View style={styles.utilityBadge}>
-              <Text style={styles.utilityBadgeText}>{collapsed ? ">" : "<"}</Text>
+              <Text style={styles.utilityBadgeText}>
+                {collapsed ? collapseCollapsedGlyph : collapseExpandedGlyph}
+              </Text>
             </View>
             {showLabels ? (
-              <Text style={styles.utilityTitle}>
-                {collapsed ? "Open sidebar" : "Collapse sidebar"}
+              <Text style={[styles.utilityTitle, utilityTitleStyle]}>
+                {collapsed ? t("nav.openSidebar") : t("nav.collapseSidebar")}
               </Text>
             ) : null}
           </TouchableOpacity>
         ) : (
           <TouchableOpacity activeOpacity={0.84} onPress={onCloseDrawer} style={styles.mobileClose}>
-            <Text style={styles.mobileCloseText}>Close</Text>
+            <Text style={[styles.mobileCloseText, mobileCloseTextStyle]}>{t("nav.close")}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -210,16 +225,26 @@ function SidebarContent({
 
 export default function AppShell({ activeRouteName, children, navigation }) {
   const { logout } = useAuth();
+  const { t, isRTL } = useLocale();
+  const typography = useTypography();
   const { width } = useWindowDimensions();
   const isMobile = width < MOBILE_BREAKPOINT;
-  const [fontsLoaded] = useFonts({ Caveat_700Bold });
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const animatedSidebarWidth = useRef(new Animated.Value(SIDEBAR_WIDTH)).current;
 
   const effectiveCollapsed = !isMobile && collapsed;
   const sidebarWidth = effectiveCollapsed ? COLLAPSED_WIDTH : SIDEBAR_WIDTH;
-  const titleFontFamily = fontsLoaded ? "Caveat_700Bold" : undefined;
+  const titleFontFamily = typography.brandFont;
+  const navItems = useMemo(() => buildNavItems(t), [t]);
+  const subtitleStyle = typography.uiRegular ? { fontFamily: typography.uiRegular } : null;
+  const navLabelStyle = typography.uiBold ? { fontFamily: typography.uiBold } : null;
+  const utilityTitleStyle = typography.uiBold ? { fontFamily: typography.uiBold } : null;
+  const mobileCloseTextStyle = typography.uiBold ? { fontFamily: typography.uiBold } : null;
+  const mobileTitleStyle = typography.brandFont ? { fontFamily: typography.brandFont } : null;
+
+  const collapseCollapsedGlyph = isRTL ? "<" : ">";
+  const collapseExpandedGlyph = isRTL ? ">" : "<";
 
   useEffect(() => {
     Animated.timing(animatedSidebarWidth, {
@@ -256,30 +281,42 @@ export default function AppShell({ activeRouteName, children, navigation }) {
           <SidebarContent
             activeRouteName={activeRouteName}
             collapsed={effectiveCollapsed}
+            navItems={navItems}
+            collapseCollapsedGlyph={collapseCollapsedGlyph}
+            collapseExpandedGlyph={collapseExpandedGlyph}
+            mobileCloseTextStyle={mobileCloseTextStyle}
+            navLabelStyle={navLabelStyle}
             onLogout={logout}
             onNavigate={navigateTo}
             onToggleCollapsed={toggleCollapsed}
             showCollapseControl
+            subtitleStyle={subtitleStyle}
             titleFontFamily={titleFontFamily}
+            t={t}
+            utilityTitleStyle={utilityTitleStyle}
           />
         </Animated.View>
       ) : null}
 
       <View style={styles.contentFrame}>
+        {!isMobile ? (
+          <View style={styles.desktopTopBar}>
+            <View style={styles.desktopTopBarFill} />
+            <LanguageSwitcher />
+          </View>
+        ) : null}
         {isMobile ? (
           <View style={styles.mobileHeader}>
             <TouchableOpacity
-              accessibilityLabel="Open navigation menu"
+              accessibilityLabel={t("nav.openMenuA11y")}
               activeOpacity={0.84}
               onPress={() => setDrawerOpen(true)}
               style={styles.mobileMenuButton}
             >
               <Text style={styles.mobileMenuIcon}>☰</Text>
             </TouchableOpacity>
-            <Text style={[styles.mobileTitle, titleFontFamily ? { fontFamily: titleFontFamily } : null]}>
-              My Story
-            </Text>
-            <View style={styles.mobileHeaderSpacer} />
+            <Text style={[styles.mobileTitle, mobileTitleStyle]}>{t("brand.mobileTitle")}</Text>
+            <LanguageSwitcher compact />
           </View>
         ) : null}
         {children}
@@ -297,11 +334,19 @@ export default function AppShell({ activeRouteName, children, navigation }) {
             <SidebarContent
               activeRouteName={activeRouteName}
               collapsed={false}
+              navItems={navItems}
+              collapseCollapsedGlyph={collapseCollapsedGlyph}
+              collapseExpandedGlyph={collapseExpandedGlyph}
+              mobileCloseTextStyle={mobileCloseTextStyle}
+              navLabelStyle={navLabelStyle}
               onCloseDrawer={() => setDrawerOpen(false)}
               onLogout={logout}
               onNavigate={navigateTo}
               showCollapseControl={false}
+              subtitleStyle={subtitleStyle}
               titleFontFamily={titleFontFamily}
+              t={t}
+              utilityTitleStyle={utilityTitleStyle}
             />
           </View>
         </View>
@@ -318,8 +363,8 @@ const styles = StyleSheet.create({
   },
   desktopShell: {
     backgroundColor: colors.diary.paper,
-    borderRightColor: colors.diary.divider,
-    borderRightWidth: 1,
+    borderEndColor: colors.diary.divider,
+    borderEndWidth: 1,
     overflow: "hidden",
     shadowColor: colors.diary.shadow,
     shadowOffset: { width: 2, height: 0 },
@@ -628,6 +673,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.diary.canvas,
     flex: 1,
   },
+  desktopTopBar: {
+    alignItems: "center",
+    backgroundColor: colors.diary.canvas,
+    borderBottomColor: colors.diary.divider,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    paddingBottom: 10,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === "ios" ? 14 : 12,
+  },
+  desktopTopBarFill: {
+    flex: 1,
+  },
   mobileHeader: {
     alignItems: "center",
     backgroundColor: colors.diary.paper,
@@ -665,9 +723,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 26,
     textAlign: "center",
-  },
-  mobileHeaderSpacer: {
-    width: 40,
   },
   drawerLayer: {
     flex: 1,

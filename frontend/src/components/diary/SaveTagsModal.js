@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useLocale, useTypography } from "../../context/LocaleContext";
 import { colors } from "../../styles/colors";
 import { radius } from "../../styles/spacing";
 
@@ -22,6 +23,11 @@ export default function SaveTagsModal({
   onSave,
   onSkip,
 }) {
+  const { t } = useLocale();
+  const typography = useTypography();
+  const uiBold = typography.uiBold ? { fontFamily: typography.uiBold } : null;
+  const uiRegular = typography.uiRegular ? { fontFamily: typography.uiRegular } : null;
+
   const [draftIds, setDraftIds] = useState(initialSelectedIds);
 
   useEffect(() => {
@@ -49,11 +55,9 @@ export default function SaveTagsModal({
         <Pressable style={StyleSheet.absoluteFill} onPress={saving ? undefined : onClose} />
 
         <View style={styles.card}>
-          <Text style={styles.eyebrow}>Almost saved</Text>
-          <Text style={styles.title}>Add tags?</Text>
-          <Text style={styles.subtitle}>
-            Choose a few quiet markers for this memory, or skip and keep writing simple.
-          </Text>
+          <Text style={[styles.eyebrow, uiBold]}>{t("saveTags.eyebrow")}</Text>
+          <Text style={[styles.title, uiBold]}>{t("saveTags.title")}</Text>
+          <Text style={[styles.subtitle, uiRegular]}>{t("saveTags.subtitle")}</Text>
 
           {tags.length ? (
             <ScrollView
@@ -77,7 +81,7 @@ export default function SaveTagsModal({
                     activeOpacity={0.75}
                     disabled={saving}
                   >
-                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                    <Text style={[styles.chipText, uiRegular, selected && styles.chipTextSelected]}>
                       {tag.name}
                     </Text>
                   </TouchableOpacity>
@@ -86,7 +90,7 @@ export default function SaveTagsModal({
             </ScrollView>
           ) : (
             <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>No tags yet. You can save now and add tags later.</Text>
+              <Text style={[styles.emptyText, uiRegular]}>{t("saveTags.emptyTags")}</Text>
             </View>
           )}
 
@@ -100,8 +104,8 @@ export default function SaveTagsModal({
               {saving ? (
                 <ActivityIndicator size="small" color={colors.diary.paper} />
               ) : (
-                <Text style={styles.primaryText}>
-                  {isEditing ? "Save changes" : "Save story"}
+                <Text style={[styles.primaryText, uiBold]}>
+                  {isEditing ? t("saveTags.saveEdit") : t("saveTags.saveNew")}
                 </Text>
               )}
             </TouchableOpacity>
@@ -112,7 +116,7 @@ export default function SaveTagsModal({
               disabled={saving}
               activeOpacity={0.75}
             >
-              <Text style={styles.skipText}>Skip tags</Text>
+              <Text style={[styles.skipText, uiBold]}>{t("saveTags.skip")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -148,25 +152,19 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 1,
     marginBottom: 5,
-    textAlign: "left",
     textTransform: "uppercase",
-    writingDirection: "ltr",
   },
   title: {
     color: colors.diary.ink,
     fontSize: 24,
     fontWeight: "800",
     marginBottom: 6,
-    textAlign: "left",
-    writingDirection: "ltr",
   },
   subtitle: {
     color: colors.diary.inkMid,
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 16,
-    textAlign: "left",
-    writingDirection: "ltr",
   },
   tagScroll: {
     maxHeight: 150,
@@ -188,8 +186,6 @@ const styles = StyleSheet.create({
     color: colors.diary.inkMid,
     fontSize: 13,
     fontWeight: "700",
-    textAlign: "left",
-    writingDirection: "auto",
   },
   chipTextSelected: {
     color: colors.diary.paper,
@@ -205,8 +201,6 @@ const styles = StyleSheet.create({
     color: colors.diary.inkMid,
     fontSize: 13,
     lineHeight: 18,
-    textAlign: "left",
-    writingDirection: "ltr",
   },
   actions: {
     gap: 10,
@@ -226,7 +220,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800",
     textAlign: "center",
-    writingDirection: "ltr",
   },
   skipButton: {
     alignItems: "center",
@@ -237,7 +230,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     textAlign: "center",
-    writingDirection: "ltr",
   },
   disabled: {
     opacity: 0.6,

@@ -11,10 +11,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { useFonts, Caveat_700Bold } from "@expo-google-fonts/caveat";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
+import AddExerciseModal from "../components/exercises/AddExerciseModal";
 import ExerciseCard from "../components/exercises/ExerciseCard";
-import ExerciseForm from "../components/exercises/ExerciseForm";
+import { useLocale, useTypography } from "../context/LocaleContext";
 import { useExerciseTemplates } from "../hooks/useExerciseTemplates";
 import { useExercises } from "../hooks/useExercises";
 import { colors } from "../styles/colors";
@@ -22,17 +22,34 @@ import { radius } from "../styles/spacing";
 
 export default function ExercisesPage() {
   const navigation = useNavigation();
+  const route = useRoute();
   const { exercises, loading, error, fetchAll, createExercise, deleteExerciseById } = useExercises();
   const { templates, fetchAll: fetchTemplates } = useExerciseTemplates();
-  const [fontsLoaded] = useFonts({ Caveat_700Bold });
+  const { locale, t } = useLocale();
+  const typography = useTypography();
   const [saving, setSaving] = useState(false);
-  const handwritingBold = fontsLoaded ? "Caveat_700Bold" : undefined;
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [formKey, setFormKey] = useState(0);
+
+  const handwritingBold = typography.journalBold;
+  const uiRegular = typography.uiRegular ? { fontFamily: typography.uiRegular } : null;
+  const uiBold = typography.uiBold ? { fontFamily: typography.uiBold } : null;
 
   useFocusEffect(
     useCallback(() => {
       fetchAll();
       fetchTemplates();
     }, [fetchAll, fetchTemplates])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      const preset = route.params?.presetExerciseDate;
+      if (!preset) return;
+      setFormKey((k) => k + 1);
+      setAddModalVisible(true);
+      navigation.setParams({ presetExerciseDate: undefined });
+    }, [route.params?.presetExerciseDate, navigation])
   );
 
   const showError = (title, message) => {
@@ -45,20 +62,21 @@ export default function ExercisesPage() {
 
   const handleCreate = async (payload) => {
     if (!payload.template_id) {
-      showError("Template required", "Please select a template before saving an exercise.");
+      showError(t("exercises.templateRequiredTitle"), t("exercises.templateRequiredBody"));
       return false;
     }
     if (!payload.name) {
-      showError("Exercise name required", "Please enter a name for this exercise.");
+      showError(t("exercises.nameRequiredTitle"), t("exercises.nameRequiredBody"));
       return false;
     }
 
     setSaving(true);
     try {
       await createExercise(payload);
+      setAddModalVisible(false);
       return true;
     } catch (e) {
-      showError("Could not add exercise", e.message);
+      showError(t("exercises.addFailTitle"), e.message);
       return false;
     } finally {
       setSaving(false);
@@ -71,24 +89,31 @@ export default function ExercisesPage() {
       try {
         await deleteExerciseById(exercise.id);
       } catch (e) {
-        showError("Could not delete exercise", e.message);
+        showError(t("exercises.deleteFailTitle"), e.message);
       } finally {
         setSaving(false);
       }
     };
 
-    const message = `"${exercise.name}" will be permanently deleted.`;
+    const message = t("exercises.deleteBody", { name: exercise.name });
 
     if (Platform.OS === "web" && typeof window !== "undefined" && typeof window.confirm === "function") {
-      if (window.confirm(`Delete exercise?\n\n${message}`)) void runDelete();
+      if (window.confirm(`${t("exercises.deleteConfirmWeb")}\n\n${message}`)) void runDelete();
       return;
     }
 
-    Alert.alert("Delete exercise?", message, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => void runDelete() },
+    Alert.alert(t("exercises.deleteTitle"), message, [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.delete"), style: "destructive", onPress: () => void runDelete() },
     ]);
   };
+
+  const openAddExerciseModal = () => {
+    setFormKey((k) => k + 1);
+    setAddModalVisible(true);
+  };
+
+  const handleCreateFromModal = async (payload) => handleCreate(payload);
 
   const renderEmpty = () => {
     if (loading) {
@@ -102,10 +127,10 @@ export default function ExercisesPage() {
     if (error) {
       return (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>Could not load exercises</Text>
-          <Text style={styles.emptyText}>{error}</Text>
+          <Text style={[styles.emptyTitle, uiBold]}>{t("exercises.loadErrorTitle")}</Text>
+          <Text style={[styles.emptyText, uiRegular]}>{error}</Text>
           <TouchableOpacity style={styles.secondaryButton} onPress={fetchAll}>
-            <Text style={styles.secondaryButtonText}>Try again</Text>
+            <Text style={[styles.secondaryButtonText, uiBold]}>{t("common.tryAgain")}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -114,11 +139,9 @@ export default function ExercisesPage() {
     return (
       <View style={styles.emptyCard}>
         <Text style={[styles.emptyTitle, handwritingBold ? { fontFamily: handwritingBold } : null]}>
-          No exercises yet
+          {t("exercises.emptyTitle")}
         </Text>
-        <Text style={styles.emptyText}>
-          Select a template, set a rhythm, and save your answers as a personal exercise.
-        </Text>
+        <Text style={[styles.emptyText, uiRegular]}>{t("exercises.emptyBody")}</Text>
         {templates.length === 0 ? (
           <TouchableOpacity
             style={styles.primaryButton}
@@ -126,9 +149,13 @@ export default function ExercisesPage() {
               navigation.navigate("SettingsPage", { screen: "ExerciseTemplatesPage" })
             }
           >
-            <Text style={styles.primaryButtonText}>Create a template first</Text>
+            <Text style={[styles.primaryButtonText, uiBold]}>{t("exercises.createTemplateFirst")}</Text>
           </TouchableOpacity>
-        ) : null}
+        ) : (
+          <TouchableOpacity style={styles.primaryButton} onPress={openAddExerciseModal}>
+            <Text style={[styles.primaryButtonText, uiBold]}>{t("exercises.addFirstExercise")}</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
@@ -136,9 +163,23 @@ export default function ExercisesPage() {
   return (
     <View style={styles.screen}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.diary.canvas} />
+
+      <View style={styles.topBar}>
+        <View style={styles.topBarCenter} />
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={openAddExerciseModal}
+          accessibilityRole="button"
+          accessibilityLabel={t("exercises.addExerciseA11y")}
+        >
+          <Text style={[styles.addButtonText, uiBold]}>{t("exercises.addExerciseGlyph")}</Text>
+        </TouchableOpacity>
+      </View>
+
       <FlatList
         data={exercises}
         keyExtractor={(item) => String(item.id)}
+        extraData={locale}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
@@ -148,21 +189,26 @@ export default function ExercisesPage() {
           />
         }
         ListHeaderComponent={
-          <>
-            <View style={styles.header}>
-              <Text style={[styles.title, handwritingBold ? { fontFamily: handwritingBold } : null]}>
-                Exercises
-              </Text>
-              <Text style={styles.subtitle}>
-                Turn reusable templates into filled-in practices with frequency and schedule.
-              </Text>
-            </View>
-            <ExerciseForm templates={templates} onSubmit={handleCreate} saving={saving} />
-          </>
+          <View style={styles.header}>
+            <Text style={[styles.title, handwritingBold ? { fontFamily: handwritingBold } : null]}>
+              {t("exercises.title")}
+            </Text>
+          </View>
         }
         ListEmptyComponent={renderEmpty}
         renderItem={({ item }) => <ExerciseCard exercise={item} onDelete={() => confirmDelete(item)} />}
         showsVerticalScrollIndicator={false}
+      />
+
+      <AddExerciseModal
+        key={formKey}
+        visible={addModalVisible}
+        templates={templates}
+        saving={saving}
+        onClose={() => {
+          if (!saving) setAddModalVisible(false);
+        }}
+        onSubmit={handleCreateFromModal}
       />
     </View>
   );
@@ -173,10 +219,37 @@ const styles = StyleSheet.create({
     backgroundColor: colors.diary.canvas,
     flex: 1,
   },
+  topBar: {
+    alignItems: "center",
+    backgroundColor: colors.diary.canvas,
+    flexDirection: "row",
+    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === "ios" ? 46 : 28,
+  },
+  topBarCenter: {
+    flex: 1,
+  },
+  addButton: {
+    alignItems: "center",
+    borderColor: colors.diary.divider,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    height: 40,
+    justifyContent: "center",
+    width: 40,
+  },
+  addButtonText: {
+    color: colors.diary.ink,
+    fontSize: 22,
+    fontWeight: "700",
+    lineHeight: 26,
+    marginTop: -2,
+  },
   listContent: {
     paddingBottom: 36,
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === "ios" ? 46 : 28,
+    paddingTop: 8,
   },
   header: {
     alignItems: "flex-start",
@@ -187,16 +260,6 @@ const styles = StyleSheet.create({
     color: colors.diary.ink,
     fontSize: 32,
     lineHeight: 38,
-    textAlign: "left",
-    writingDirection: "ltr",
-  },
-  subtitle: {
-    color: colors.diary.inkMid,
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 4,
-    textAlign: "left",
-    writingDirection: "ltr",
   },
   centerState: {
     alignItems: "center",
@@ -208,22 +271,23 @@ const styles = StyleSheet.create({
     borderColor: colors.diary.accentLight,
     borderRadius: radius.lg,
     borderWidth: 1,
+    elevation: 4,
     padding: 18,
+    shadowColor: colors.diary.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
   },
   emptyTitle: {
     color: colors.diary.ink,
     fontSize: 22,
     marginBottom: 8,
-    textAlign: "left",
-    writingDirection: "ltr",
   },
   emptyText: {
     color: colors.diary.inkMid,
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 12,
-    textAlign: "left",
-    writingDirection: "ltr",
   },
   primaryButton: {
     backgroundColor: colors.diary.ink,

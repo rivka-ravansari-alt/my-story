@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { TextInput, View, StyleSheet, Platform } from "react-native";
+import { useLocale } from "../../context/LocaleContext";
 import { colors } from "../../styles/colors";
+import { hebrewInputRtlStyle, withRtlPlaceholder } from "../../utils/rtlTextInput";
 
 const LINE_HEIGHT = 29;
 const LINE_COUNT = 9;
@@ -16,9 +18,18 @@ export default function DiaryBodyField({
   fontFamily,
 }) {
   const [focused, setFocused] = useState(false);
+  const { locale } = useLocale();
+  const isHebrew = locale === "he";
+  const placeholderDisplay = withRtlPlaceholder(placeholder, isHebrew);
 
   return (
-    <View style={[styles.wrapper, focused && styles.wrapperFocused]}>
+    <View
+      style={[
+        styles.wrapper,
+        focused && styles.wrapperFocused,
+        isHebrew && styles.wrapperRtl,
+      ]}
+    >
       {/* Ruled lines drawn behind the text */}
       <View style={styles.linesContainer} pointerEvents="none">
         {Array.from({ length: LINE_COUNT }).map((_, i) => (
@@ -30,17 +41,19 @@ export default function DiaryBodyField({
         style={[
           styles.input,
           fontFamily ? { fontFamily } : null,
+          hebrewInputRtlStyle(isHebrew),
         ]}
         value={value}
         onChangeText={onChangeText}
-        placeholder={placeholder}
+        placeholder={placeholderDisplay}
         placeholderTextColor={colors.diary.inkLight}
         multiline
         textAlignVertical="top"
         scrollEnabled={false}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        textAlign="auto"
+        textAlign={isHebrew ? "right" : "left"}
+        writingDirection={isHebrew ? "rtl" : "ltr"}
       />
     </View>
   );
@@ -55,6 +68,9 @@ const styles = StyleSheet.create({
   },
   wrapperFocused: {
     backgroundColor: "rgba(255,254,248,0.6)",
+  },
+  wrapperRtl: {
+    direction: "rtl",
   },
   linesContainer: {
     position: "absolute",

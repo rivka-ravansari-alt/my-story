@@ -1,5 +1,6 @@
 import React from "react";
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useLocale, useTypography } from "../../context/LocaleContext";
 import { colors } from "../../styles/colors";
 import { radius } from "../../styles/spacing";
 
@@ -14,6 +15,14 @@ export default function TagListItem({
   onSaveEdit,
   onStartEdit,
 }) {
+  const { t, isRTL } = useLocale();
+  const rtlFieldText = isRTL
+    ? { textAlign: "right", writingDirection: "rtl" }
+    : { textAlign: "left", writingDirection: "ltr" };
+  const typography = useTypography();
+  const uiBold = typography.uiBold ? { fontFamily: typography.uiBold } : null;
+  const uiRegular = typography.uiRegular ? { fontFamily: typography.uiRegular } : null;
+
   return (
     <View style={styles.row}>
       <View style={styles.tagPreview}>
@@ -24,12 +33,12 @@ export default function TagListItem({
             onChangeText={onChangeDraftName}
             onSubmitEditing={onSaveEdit}
             autoFocus
-            placeholder="Tag name"
+            placeholder={t("tagItem.placeholder")}
             placeholderTextColor={colors.diary.inkLight}
-            style={styles.input}
+            style={[styles.input, uiRegular, rtlFieldText]}
           />
         ) : (
-          <Text style={styles.name}>{tag.name}</Text>
+          <Text style={[styles.name, uiBold, rtlFieldText]}>{tag.name}</Text>
         )}
       </View>
 
@@ -41,19 +50,19 @@ export default function TagListItem({
               onPress={onSaveEdit}
               disabled={saving}
             >
-              <Text style={styles.primaryActionText}>Save</Text>
+              <Text style={[styles.primaryActionText, uiBold]}>{t("tagItem.save")}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionButton} onPress={onCancelEdit} disabled={saving}>
-              <Text style={styles.actionText}>Cancel</Text>
+              <Text style={[styles.actionText, uiBold]}>{t("tagItem.cancel")}</Text>
             </TouchableOpacity>
           </>
         ) : (
           <>
             <TouchableOpacity style={styles.actionButton} onPress={onStartEdit}>
-              <Text style={styles.actionText}>Edit</Text>
+              <Text style={[styles.actionText, uiBold]}>{t("tagItem.edit")}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionButton} onPress={onDelete}>
-              <Text style={styles.deleteText}>Delete</Text>
+              <Text style={[styles.deleteText, uiBold]}>{t("tagItem.delete")}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -89,8 +98,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: "700",
-    textAlign: "left",
-    writingDirection: "auto",
   },
   input: {
     backgroundColor: colors.diary.paperAlt,
@@ -102,8 +109,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     paddingHorizontal: 10,
     paddingVertical: 7,
-    textAlign: "left",
-    writingDirection: "auto",
   },
   actions: {
     alignItems: "center",

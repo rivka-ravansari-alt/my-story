@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useLocale, useTypography } from "../../context/LocaleContext";
+import { messagesByLocale } from "../../i18n";
 import { colors } from "../../styles/colors";
 import { radius, shadow } from "../../styles/spacing";
-
-const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function getLocalDateKey(dateValue = new Date()) {
   const year = dateValue.getFullYear();
@@ -38,42 +38,71 @@ function getMonthCells(monthDate) {
   return cells;
 }
 
-export default function CalendarSidePanel({ selectedDate, onSelectDate, titleFontFamily }) {
+export default function CalendarSidePanel({
+  selectedDate,
+  onSelectDate,
+  titleFontFamily,
+  variant = "default",
+}) {
+  const { locale, t } = useLocale();
+  const typography = useTypography();
   const todayKey = useMemo(() => getLocalDateKey(), []);
   const [visibleMonth, setVisibleMonth] = useState(() => new Date(`${selectedDate}T00:00:00`));
 
-  const monthTitle = visibleMonth.toLocaleDateString("en-US", {
+  const loc = locale === "he" ? "he-IL" : "en-US";
+  const monthTitle = visibleMonth.toLocaleDateString(loc, {
     month: "long",
     year: "numeric",
   });
 
   const calendarCells = useMemo(() => getMonthCells(visibleMonth), [visibleMonth]);
+  const weekdays =
+    messagesByLocale[locale]?.calendar?.weekdaysShort ||
+    messagesByLocale.en.calendar.weekdaysShort;
+
+  const labelStyle = typography.uiBold ? { fontFamily: typography.uiBold } : null;
+  const weekdayStyle = typography.uiBold ? { fontFamily: typography.uiBold } : null;
+  const monthBtnStyle = typography.uiBold ? { fontFamily: typography.uiBold } : null;
 
   const moveMonth = (amount) => {
     setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + amount, 1));
   };
 
+  const isJournal = variant === "journal";
+
   return (
-    <View style={styles.card}>
-      <Text style={styles.label}>Choose date</Text>
+    <View style={[styles.card, isJournal && styles.cardJournal]}>
+      <Text style={[styles.label, labelStyle, isJournal && styles.labelJournal]}>{t("calendar.chooseDate")}</Text>
 
       <View style={styles.monthHeader}>
-        <TouchableOpacity style={styles.monthButton} onPress={() => moveMonth(-1)}>
-          <Text style={styles.monthButtonText}>{"<"}</Text>
+        <TouchableOpacity
+          style={[styles.monthButton, isJournal && styles.monthButtonJournal]}
+          onPress={() => moveMonth(-1)}
+        >
+          <Text style={[styles.monthButtonText, monthBtnStyle]}>{"<"}</Text>
         </TouchableOpacity>
 
-        <Text style={[styles.monthTitle, titleFontFamily ? { fontFamily: titleFontFamily } : null]}>
+        <Text
+          style={[
+            styles.monthTitle,
+            isJournal && styles.monthTitleJournal,
+            titleFontFamily ? { fontFamily: titleFontFamily } : null,
+          ]}
+        >
           {monthTitle}
         </Text>
 
-        <TouchableOpacity style={styles.monthButton} onPress={() => moveMonth(1)}>
-          <Text style={styles.monthButtonText}>{">"}</Text>
+        <TouchableOpacity
+          style={[styles.monthButton, isJournal && styles.monthButtonJournal]}
+          onPress={() => moveMonth(1)}
+        >
+          <Text style={[styles.monthButtonText, monthBtnStyle]}>{">"}</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.weekdayRow}>
-        {DAY_LABELS.map((label) => (
-          <Text key={label} style={styles.weekdayLabel}>
+        {weekdays.map((label) => (
+          <Text key={label} style={[styles.weekdayLabel, weekdayStyle, isJournal && styles.weekdayLabelJournal]}>
             {label}
           </Text>
         ))}
@@ -89,6 +118,7 @@ export default function CalendarSidePanel({ selectedDate, onSelectDate, titleFon
               key={cell?.dateKey || `empty-${index}`}
               style={[
                 styles.dayCell,
+                isJournal && styles.dayCellJournal,
                 !cell && styles.emptyCell,
                 isToday && styles.todayCell,
                 isSelected && styles.selectedCell,
@@ -101,8 +131,10 @@ export default function CalendarSidePanel({ selectedDate, onSelectDate, titleFon
                 <Text
                   style={[
                     styles.dayText,
+                    isJournal && styles.dayTextJournal,
                     isToday && styles.todayText,
                     isSelected && styles.selectedText,
+                    weekdayStyle,
                   ]}
                 >
                   {cell.day}
@@ -126,6 +158,13 @@ const styles = StyleSheet.create({
     width: 292,
     ...shadow.md,
   },
+  cardJournal: {
+    alignSelf: "center",
+    maxWidth: 420,
+    padding: 20,
+    width: "100%",
+    ...shadow.md,
+  },
   label: {
     color: colors.diary.accent,
     fontSize: 12,
@@ -133,6 +172,10 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: 8,
     textTransform: "uppercase",
+  },
+  labelJournal: {
+    fontSize: 13,
+    marginBottom: 12,
   },
   monthHeader: {
     alignItems: "center",
@@ -150,6 +193,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 30,
   },
+  monthButtonJournal: {
+    height: 36,
+    width: 36,
+  },
   monthButtonText: {
     color: colors.diary.inkMid,
     fontSize: 15,
@@ -159,6 +206,9 @@ const styles = StyleSheet.create({
     color: colors.diary.ink,
     fontSize: 22,
     textAlign: "center",
+  },
+  monthTitleJournal: {
+    fontSize: 26,
   },
   weekdayRow: {
     flexDirection: "row",
@@ -171,6 +221,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
   },
+  weekdayLabelJournal: {
+    fontSize: 11,
+  },
   daysGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -182,6 +235,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginVertical: 2,
     width: "14.285%",
+  },
+  dayCellJournal: {
+    marginVertical: 3,
   },
   emptyCell: {
     opacity: 0,
@@ -196,6 +252,9 @@ const styles = StyleSheet.create({
     color: colors.diary.inkMid,
     fontSize: 13,
     fontWeight: "700",
+  },
+  dayTextJournal: {
+    fontSize: 16,
   },
   todayText: {
     color: colors.diary.ink,

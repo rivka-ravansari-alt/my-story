@@ -8,17 +8,20 @@ import {
   Text,
   View,
 } from "react-native";
-import { useFonts, Caveat_700Bold } from "@expo-google-fonts/caveat";
 import { useAuth } from "../context/AuthContext";
+import { useLocale, useTypography } from "../context/LocaleContext";
 import { colors } from "../styles/colors";
 import { radius } from "../styles/spacing";
 
 export default function LoginPage() {
   const { loginWithGoogle } = useAuth();
-  const [fontsLoaded] = useFonts({ Caveat_700Bold });
+  const { locale, t } = useLocale();
+  const typography = useTypography();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const titleFontFamily = fontsLoaded ? "Caveat_700Bold" : undefined;
+  const titleFontFamily = typography.brandFont;
+  const subtitleStyle = typography.uiRegular ? { fontFamily: typography.uiRegular } : null;
+  const bodyBoldStyle = typography.uiBold ? { fontFamily: typography.uiBold } : null;
 
   const handleGoogleLogin = async (credential) => {
     setError("");
@@ -27,11 +30,13 @@ export default function LoginPage() {
     try {
       await loginWithGoogle(credential);
     } catch (e) {
-      setError(e.message || "Could not continue with Google. Please try again.");
+      setError(e.message || t("login.googleErrorGeneric"));
     } finally {
       setSaving(false);
     }
   };
+
+  const googleUiLocale = locale === "he" ? "he" : "en";
 
   return (
     <ScrollView contentContainerStyle={styles.screen}>
@@ -44,26 +49,26 @@ export default function LoginPage() {
         </View>
 
         <Text style={[styles.title, titleFontFamily ? { fontFamily: titleFontFamily } : null]}>
-          My Story Journal
+          {t("login.title")}
         </Text>
-        <Text style={styles.subtitle}>
-          A private place to keep your memories, moments, and the stories that matter.
-        </Text>
+        <Text style={[styles.subtitle, subtitleStyle]}>{t("login.subtitle")}</Text>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? (
+          <Text style={[styles.error, subtitleStyle]}>{error}</Text>
+        ) : null}
 
         <View style={[styles.googleButtonWrap, saving && styles.disabled]}>
           {saving ? (
             <View style={styles.googleButtonLoading}>
               <ActivityIndicator color={colors.diary.ink} size="small" />
-              <Text style={styles.googleButtonText}>Signing in with Google...</Text>
+              <Text style={[styles.googleButtonText, bodyBoldStyle]}>{t("login.signingIn")}</Text>
             </View>
           ) : (
             <GoogleLogin
               onSuccess={(response) => handleGoogleLogin(response.credential)}
-              onError={() => setError("Google login was cancelled or failed. Please try again.")}
+              onError={() => setError(t("login.googleCancelled"))}
               text="continue_with"
-              locale="en"
+              locale={googleUiLocale}
               shape="pill"
               size="large"
               theme="outline"
@@ -72,10 +77,7 @@ export default function LoginPage() {
           )}
         </View>
 
-        <Text style={styles.footerText}>
-          Google will ask you to choose an account, then My Story Journal verifies the login
-          before opening your private journal.
-        </Text>
+        <Text style={[styles.footerText, subtitleStyle]}>{t("login.footer")}</Text>
       </View>
     </ScrollView>
   );

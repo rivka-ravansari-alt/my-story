@@ -1,27 +1,40 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useLocale, useTypography } from "../../context/LocaleContext";
 import { colors } from "../../styles/colors";
 import { radius } from "../../styles/spacing";
+import { hebrewInputRtlStyle, withRtlPlaceholder } from "../../utils/rtlTextInput";
 
-const frequencies = [
-  { value: "daily", label: "Daily" },
-  { value: "weekly", label: "Weekly" },
-  { value: "monthly", label: "Monthly" },
-  { value: "custom", label: "Custom" },
-];
+const DEFAULT_FREQUENCY = "daily";
 
-export default function ExerciseForm({ templates, onSubmit, saving }) {
+/** Comfortable minimum visible lines; content grows up to max then scrolls inside. */
+const ANSWER_INPUT_MIN = 64;
+const ANSWER_INPUT_MAX = 320;
+
+const IS_WEB = Platform.OS === "web";
+
+function contentPaddingY() {
+  if (Platform.OS === "ios") return 16;
+  if (Platform.OS === "android") return 8;
+  return 10;
+}
+
+export default function ExerciseForm({ templates, onSubmit, saving, embedded }) {
+  const { locale, t } = useLocale();
+  const isHebrew = locale === "he";
+  const typography = useTypography();
   const [templateId, setTemplateId] = useState(null);
   const [name, setName] = useState("");
-  const [frequency, setFrequency] = useState("daily");
-  const [scheduleTime, setScheduleTime] = useState("");
   const [answers, setAnswers] = useState({});
+  /** Raw content heights from layout; box height is clamped between min and max */
+  const [answerContentHeights, setAnswerContentHeights] = useState({});
 
   useEffect(() => {
-    if (templates.length > 0 && !templates.some((template) => template.id === templateId)) {
-      setTemplateId(templates[0].id);
-    }
-  }, [templateId, templates]);
+    setAnswerContentHeights({});
+  }, [templateId]);
+
+  const uiBold = typography.uiBold ? { fontFamily: typography.uiBold } : null;
+  const uiRegular = typography.uiRegular ? { fontFamily: typography.uiRegular } : null;
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.id === templateId),
@@ -38,9 +51,8 @@ export default function ExerciseForm({ templates, onSubmit, saving }) {
   };
 
   const resetForm = () => {
+    setTemplateId(null);
     setName("");
-    setFrequency("daily");
-    setScheduleTime("");
     setAnswers({});
   };
 
@@ -48,8 +60,8 @@ export default function ExerciseForm({ templates, onSubmit, saving }) {
     const saved = await onSubmit({
       template_id: templateId,
       name: name.trim(),
-      frequency,
-      schedule_time: scheduleTime.trim(),
+      frequency: DEFAULT_FREQUENCY,
+      schedule_time: "",
       answers,
     });
     if (saved !== false) {
@@ -57,15 +69,23 @@ export default function ExerciseForm({ templates, onSubmit, saving }) {
     }
   };
 
-  return (
-    <View style={styles.card}>
-      <Text style={styles.sectionTitle}>Add exercise</Text>
+  const templateChosen = Boolean(templateId);
+  const hasTemplates = templates.length > 0;
 
-      {templates.length === 0 ? (
-        <Text style={styles.helperText}>Create an exercise template first, then come back to fill it in.</Text>
+  return (
+    <View style={[styles.card, embedded && styles.cardEmbedded]}>
+      {!embedded ? <Text style={[styles.sectionTitle, uiBold]}>{t("exerciseForm.sectionTitle")}</Text> : null}
+
+      {!hasTemplates ? (
+        <Text style={[styles.helperText, uiRegular]}>{t("exerciseForm.createTemplateFirst")}</Text>
       ) : (
         <>
-          <Text style={styles.label}>Template</Text>
+          <Text style={[styles.label, uiBold]}>{t("exerciseForm.templateLabel")}</Text>
+          {!templateChosen ? (
+            <Text style={[styles.helperText, uiRegular, styles.hintBelowLabel]}>
+              {t("exerciseForm.chooseTemplateHint")}
+            </Text>
+          ) : null}
           <View style={styles.chipRow}>
             {templates.map((template) => (
               <TouchableOpacity
@@ -73,61 +93,86 @@ export default function ExerciseForm({ templates, onSubmit, saving }) {
                 onPress={() => selectTemplate(template.id)}
                 style={[styles.chip, template.id === templateId && styles.chipActive]}
               >
-                <Text style={[styles.chipText, template.id === templateId && styles.chipTextActive]}>
+                <Text style={[styles.chipText, uiBold, template.id === templateId && styles.chipTextActive]}>
                   {template.name}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="Exercise name"
-            placeholderTextColor={colors.diary.inkLight}
-            style={styles.input}
-          />
-
-          <Text style={styles.label}>Frequency</Text>
-          <View style={styles.chipRow}>
-            {frequencies.map((item) => (
-              <TouchableOpacity
-                key={item.value}
-                onPress={() => setFrequency(item.value)}
-                style={[styles.chip, frequency === item.value && styles.chipActive]}
-              >
-                <Text style={[styles.chipText, frequency === item.value && styles.chipTextActive]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <TextInput
-            value={scheduleTime}
-            onChangeText={setScheduleTime}
-            placeholder="Schedule / time, e.g. 21:00 or Sunday evening"
-            placeholderTextColor={colors.diary.inkLight}
-            style={styles.input}
-          />
-
-          {(selectedTemplate?.fields || []).map((field, index) => (
-            <View key={field.id || `${field.label}-${index}`} style={styles.answerField}>
-              <Text style={styles.question}>{field.label}</Text>
+          {templateChosen ? (
+            <>
               <TextInput
-                value={answers[field.id] || ""}
-                onChangeText={(value) => updateAnswer(field.id, value)}
-                multiline={field.type === "long_text"}
-                placeholder={field.placeholder || "Write your answer"}
+                value={name}
+                onChangeText={setName}
+                placeholder={withRtlPlaceholder(t("exerciseForm.namePlaceholder"), isHebrew)}
                 placeholderTextColor={colors.diary.inkLight}
-                style={[styles.input, field.type === "long_text" && styles.longInput]}
+                style={[styles.input, uiRegular, hebrewInputRtlStyle(isHebrew)]}
+                textAlign={isHebrew ? "right" : "left"}
+                writingDirection={isHebrew ? "rtl" : "ltr"}
               />
-            </View>
-          ))}
 
-          <TouchableOpacity style={[styles.primaryButton, saving && styles.disabled]} onPress={handleSubmit} disabled={saving}>
-            <Text style={styles.primaryButtonText}>Save exercise</Text>
-          </TouchableOpacity>
+              {(selectedTemplate?.fields || []).map((field, index) => {
+                const fieldKey = field.id != null ? `f-${field.id}` : `i-${index}`;
+                const rawH = answerContentHeights[fieldKey];
+                const paddedMin = ANSWER_INPUT_MIN;
+                const contentH = rawH != null ? rawH : paddedMin;
+                const boxHeight = Math.min(ANSWER_INPUT_MAX, Math.max(paddedMin, contentH));
+                const overflowScroll = !IS_WEB && contentH >= ANSWER_INPUT_MAX;
+
+                return (
+                  <View key={field.id || `${field.label}-${index}`} style={styles.answerField}>
+                    <Text style={[styles.question, uiBold]}>{field.label}</Text>
+                    <TextInput
+                      value={answers[field.id] || ""}
+                      onChangeText={(value) => updateAnswer(field.id, value)}
+                      multiline
+                      blurOnSubmit={false}
+                      scrollEnabled={overflowScroll}
+                      textAlignVertical="top"
+                      placeholder={withRtlPlaceholder(
+                        field.placeholder || t("exerciseForm.answerPlaceholder"),
+                        isHebrew
+                      )}
+                      placeholderTextColor={colors.diary.inkLight}
+                      onContentSizeChange={
+                        IS_WEB
+                          ? undefined
+                          : (e) => {
+                              const { height: h } = e.nativeEvent.contentSize;
+                              const next = Math.ceil(h + contentPaddingY());
+                              setAnswerContentHeights((prev) => {
+                                if (prev[fieldKey] === next) return prev;
+                                return { ...prev, [fieldKey]: next };
+                              });
+                            }
+                      }
+                      style={[
+                        styles.input,
+                        styles.answerInput,
+                        styles.answerText,
+                        uiRegular,
+                        hebrewInputRtlStyle(isHebrew),
+                        IS_WEB
+                          ? { minHeight: ANSWER_INPUT_MIN, maxHeight: ANSWER_INPUT_MAX }
+                          : { height: boxHeight, maxHeight: ANSWER_INPUT_MAX },
+                      ]}
+                      textAlign={isHebrew ? "right" : "left"}
+                      writingDirection={isHebrew ? "rtl" : "ltr"}
+                    />
+                  </View>
+                );
+              })}
+
+              <TouchableOpacity
+                style={[styles.primaryButton, saving && styles.disabled]}
+                onPress={handleSubmit}
+                disabled={saving}
+              >
+                <Text style={[styles.primaryButtonText, uiBold]}>{t("exerciseForm.save")}</Text>
+              </TouchableOpacity>
+            </>
+          ) : null}
         </>
       )}
     </View>
@@ -143,20 +188,26 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     padding: 16,
   },
+  cardEmbedded: {
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    marginBottom: 0,
+    padding: 0,
+  },
   sectionTitle: {
     color: colors.diary.ink,
     fontSize: 15,
     fontWeight: "800",
     marginBottom: 12,
-    textAlign: "left",
-    writingDirection: "ltr",
   },
   helperText: {
     color: colors.diary.inkMid,
     fontSize: 14,
     lineHeight: 20,
-    textAlign: "left",
-    writingDirection: "ltr",
+  },
+  hintBelowLabel: {
+    marginBottom: 8,
+    marginTop: -4,
   },
   label: {
     color: colors.diary.inkMid,
@@ -200,12 +251,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    textAlign: "left",
-    writingDirection: "auto",
   },
-  longInput: {
-    minHeight: 90,
-    textAlignVertical: "top",
+  answerInput: {
+    paddingTop: Platform.OS === "ios" ? 12 : 10,
+    paddingBottom: Platform.OS === "ios" ? 12 : 10,
+  },
+  answerText: {
+    lineHeight: 20,
   },
   answerField: {
     marginTop: 2,
@@ -215,8 +267,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800",
     marginBottom: 8,
-    textAlign: "left",
-    writingDirection: "auto",
   },
   primaryButton: {
     alignSelf: "flex-start",
