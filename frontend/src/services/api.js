@@ -2,12 +2,20 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
+const PROD_URL = "https://my-story-sk5b.onrender.com";
+const ENV = typeof process !== "undefined" ? process.env : {};
+const CONFIGURED_URL = ENV.EXPO_PUBLIC_API_URL || ENV.API_URL;
+
 function getDevUrl() {
   if (Platform.OS === "android") {
     return "http://10.0.2.2:8080";
   }
 
   if (Platform.OS === "web" && typeof window !== "undefined") {
+    if (window.location.protocol === "https:") {
+      return PROD_URL;
+    }
+
     return `http://${window.location.hostname}:8080`;
   }
 
@@ -15,10 +23,10 @@ function getDevUrl() {
 }
 
 const DEV_URL = getDevUrl();
-const PROD_URL = "https://my-story-sk5b.onrender.com";
+const BASE_URL = CONFIGURED_URL || (__DEV__ ? DEV_URL : PROD_URL);
 
 const api = axios.create({
-  baseURL: __DEV__ ? DEV_URL : PROD_URL,
+  baseURL: BASE_URL,
   timeout: 15000,
   headers: { "Content-Type": "application/json" },
 });
