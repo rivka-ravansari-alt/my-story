@@ -3,5 +3,6 @@ flask-cors==5.0.0
 flask-sqlalchemy
 flask-jwt-extended
 flask-migrate
+google-auth
 gunicorn==23.0.0
 psycopg2-binary

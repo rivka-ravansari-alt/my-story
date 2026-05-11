@@ -1,6 +1,8 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, current_app, request, jsonify
 from flask_jwt_extended import create_access_token
-from services.auth_service import register_user, authenticate_user
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token
+from services.auth_service import register_user, authenticate_user, find_or_create_google_user
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -42,5 +44,40 @@ def login():
     if error:
         return jsonify({"error": error}), 401
 
+    token = create_access_token(identity=str(user.id))
+    return jsonify({"token": token, "user": user.to_dict()}), 200
+
+
+@auth_bp.route("/google", methods=["POST"])
+def google_login():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    google_id_token = data.get("idToken") or ""
+    if not google_id_token:
+        return jsonify({"error": "Google ID token is required"}), 400
+
+    client_id = current_app.config.get("GOOGLE_CLIENT_ID")
+    if not client_id:
+        return jsonify({"error": "Google login is not configured"}), 500
+
+    try:
+        profile = id_token.verify_oauth2_token(
+            google_id_token,
+            google_requests.Request(),
+            client_id,
+        )
+    except ValueError:
+        return jsonify({"error": "Invalid Google login token"}), 401
+
+    email = profile.get("email")
+    if not email:
+        return jsonify({"error": "Google account email is required"}), 400
+
+    user = find_or_create_google_user(
+        email=email,
+        name=profile.get("name") or email.split("@")[0],
+    )
     token = create_access_token(identity=str(user.id))
     return jsonify({"token": token, "user": user.to_dict()}), 200
